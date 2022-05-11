@@ -1,7 +1,6 @@
 cmake_minimum_required (VERSION 3.14)
 project (GPGPU CUDA CXX)
 
-option(PROF "Reference build" NO)
 include(FetchContent)
 
 FetchContent_Declare(
@@ -45,40 +44,13 @@ target_compile_features(renderer PUBLIC cxx_std_14)
 target_link_libraries(renderer PRIVATE spdlog::spdlog)
 
 
-if (NOT PROF)
-  target_sources(renderer PRIVATE src/render.hpp src/render.cu)
-  set_target_properties(renderer PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-
-  add_library(render_cpu_ref SHARED IMPORTED)
-  target_link_libraries(render_cpu_ref INTERFACE tbb)
-  set_target_properties(render_cpu_ref PROPERTIES IMPORTED_LOCATION ${PROJECT_SOURCE_DIR}/librender_cpu_ref.so)
-else()
-  target_sources(renderer PRIVATE src/render.hpp src/render_prof.cu)
-  set_target_properties(renderer PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-
-  add_library(render_cpu_ref SHARED IMPORTED)
-  target_link_libraries(render_cpu_ref INTERFACE tbb)
-  set_target_properties(render_cpu_ref PROPERTIES IMPORTED_LOCATION ${PROJECT_SOURCE_DIR}/librender_cpu_ref.so)
-
-  # Uncomment to regenerate the reference
-  #add_library(render_cpu_ref SHARED src/render.hpp src/render_cpu.cpp)
-  #target_link_libraries(render_cpu_ref PRIVATE tbb)
-  #target_link_libraries(render_cpu_ref PRIVATE "-s" "-nostdlib")
-  #target_compile_features(render_cpu_ref PRIVATE cxx_std_17)
-  #target_compile_options(render_cpu_ref PRIVATE "-fno-rtti" "-fno-cxx-exceptions")
-  #target_compile_options(render_cpu_ref PRIVATE "-mavx")
-endif()
-
-
-
+target_sources(renderer PRIVATE src/render.hpp src/render_cpu.cpp src/render.cu)
+set_target_properties(renderer PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 add_executable(mandel src/mandel.cpp)
 target_compile_features(mandel PUBLIC cxx_std_17)
-target_link_libraries(mandel PRIVATE render_cpu_ref PNG::PNG CLI11::CLI11 spdlog::spdlog renderer)
+target_link_libraries(mandel PRIVATE PNG::PNG CLI11::CLI11 spdlog::spdlog renderer)
 
 add_executable(bench src/bench.cpp)
 target_compile_features(bench PUBLIC cxx_std_17)
-target_link_libraries(bench PRIVATE render_cpu_ref spdlog::spdlog benchmark renderer)
-
-
-
+target_link_libraries(bench PRIVATE spdlog::spdlog benchmark renderer)
