@@ -118,11 +118,10 @@ int main(int argc, char **argv)
   (void)argc;
   (void)argv;
 
-  int input_height;
-  int input_width;
-  auto input_img = read_png("../img/b005.png", input_width, input_height);
-  write_png(input_img, input_width, input_height, input_width * 4, "test_save.png");
-
+  // int input_height;
+  // int input_width;
+  // auto input_img = read_png("../img/b005.png", input_width, input_height);
+  // write_png(input_img, input_width, input_height, input_width * 4, "test_save.png");
 
   std::string filename = "output.png";
   std::string mode = "GPU";
