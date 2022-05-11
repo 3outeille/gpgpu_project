@@ -1,5 +1,6 @@
 #include "render.hpp"
 #include <iostream>
+#include <png.h>
 
 void render_cpu(char *buffer, int width, int height, std::ptrdiff_t stride, int n_iterations)
 {

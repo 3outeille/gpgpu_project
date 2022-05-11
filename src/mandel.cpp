@@ -7,15 +7,76 @@
 #include <spdlog/spdlog.h>
 #include "render.hpp"
 
+#include <iostream>
 
-void write_png(const std::byte* buffer,
+std::byte *read_png(char *file_name, int &width, int &height)
+{
+  char header[8]; // 8 is the maximum size that can be checked
+
+  /* open file and test for it being a png */
+  FILE *fp = fopen(file_name, "rb");
+  fread(header, 1, 8, fp);
+  
+  /* initialize stuff */
+  auto png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+
+  auto info_ptr = png_create_info_struct(png_ptr);
+
+  setjmp(png_jmpbuf(png_ptr));
+
+  png_init_io(png_ptr, fp);
+  png_set_sig_bytes(png_ptr, 8);
+
+  png_read_info(png_ptr, info_ptr);
+
+  width = png_get_image_width(png_ptr, info_ptr);
+  height = png_get_image_height(png_ptr, info_ptr);
+  // color_type = png_get_color_type(png_ptr, info_ptr);
+  // bit_depth = png_get_bit_depth(png_ptr, info_ptr);
+
+  auto number_of_passes = png_set_interlace_handling(png_ptr);
+  png_read_update_info(png_ptr, info_ptr);
+
+  /* read file */
+  setjmp(png_jmpbuf(png_ptr));
+
+  std::cout << height << 'x' << width << " | " << png_get_rowbytes(png_ptr, info_ptr) << std::endl;
+
+  auto row_pointers = (png_bytep*)malloc(sizeof(png_bytep) * height);
+  for (int y = 0; y < height; y++) {
+    row_pointers[y] = (png_byte *)malloc(png_get_rowbytes(png_ptr, info_ptr));
+  }
+
+  png_read_image(png_ptr, row_pointers);
+
+  fclose(fp);
+
+  auto res = (std::byte *)malloc(width * height * 4 * sizeof(std::byte));
+
+  for (size_t i = 0; i < height; i++)
+  {
+    for (size_t j = 0; j < width; j++)
+    {
+      for (size_t k = 0; k < 3; k++)
+      {
+        res[i * (width * 4) + j * 4 + k] = static_cast<std::byte>(row_pointers[i][j * 3 + k]);
+      }
+
+      res[(width * i + j)* 4 + 3] = static_cast<std::byte>(255);
+    }
+  }
+  
+  return res;
+}
+
+void write_png(const std::byte *buffer,
                int width,
                int height,
                int stride,
-               const char* filename)
+               const char *filename)
 {
   png_structp png_ptr =
-    png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+      png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
 
   if (!png_ptr)
     return;
@@ -27,7 +88,7 @@ void write_png(const std::byte* buffer,
     return;
   }
 
-  FILE* fp = fopen(filename, "wb");
+  FILE *fp = fopen(filename, "wb");
   png_init_io(png_ptr, fp);
 
   png_set_IHDR(png_ptr, info_ptr,
@@ -51,12 +112,17 @@ void write_png(const std::byte* buffer,
   fclose(fp);
 }
 
-
 // Usage: ./mandel
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
-  (void) argc;
-  (void) argv;
+  (void)argc;
+  (void)argv;
+
+  int input_height;
+  int input_width;
+  auto input_img = read_png("../img/b005.png", input_width, input_height);
+  write_png(input_img, input_width, input_height, input_width * 4, "test_save.png");
+
 
   std::string filename = "output.png";
   std::string mode = "GPU";
@@ -82,15 +148,14 @@ int main(int argc, char** argv)
   spdlog::info("Runnging {} mode with (w={},h={},niter={}).", mode, width, height, niter);
   if (mode == "CPU")
   {
-    render_cpu(reinterpret_cast<char*>(buffer.get()), width, height, stride, niter);
+    render_cpu(reinterpret_cast<char *>(buffer.get()), width, height, stride, niter);
   }
   else if (mode == "GPU")
   {
-    render(reinterpret_cast<char*>(buffer.get()), width, height, stride, niter);
+    render(reinterpret_cast<char *>(buffer.get()), width, height, stride, niter);
   }
 
   // Save
   write_png(buffer.get(), width, height, stride, filename.c_str());
   spdlog::info("Output saved in {}.", filename);
 }
-
