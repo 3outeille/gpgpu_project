@@ -20,3 +20,5 @@ std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *input_buffer, 
 /// \param n_iterations Number of iterations maximal to decide if a point
 ///                     belongs to the mandelbrot set.
 void render(char* buffer, int width, int height, std::ptrdiff_t stride, int n_iterations = 100);
+
+std::unique_ptr<unsigned char[]> render_harris_gpu(char* buffer, int width, int height, std::ptrdiff_t stride, int n_iterations = 100);

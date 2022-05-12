@@ -1,9 +1,12 @@
 #include "render.hpp"
+#include "matrix.hpp"
 #include <spdlog/spdlog.h>
 #include <cassert>
+#include <iostream>
+#include <thrust/host_vector.h>
+#include <thrust/device_vector.h>
 
-[[gnu::noinline]]
-void _abortError(const char* msg, const char* fname, int line)
+[[gnu::noinline]] void _abortError(const char *msg, const char *fname, int line)
 {
   cudaError_t err = cudaGetLastError();
   spdlog::error("{} ({}, line: {})", msg, fname, line);
@@ -13,97 +16,86 @@ void _abortError(const char* msg, const char* fname, int line)
 
 #define abortError(msg) _abortError(msg, __FUNCTION__, __LINE__)
 
-
-struct rgba8_t {
-  std::uint8_t r;
-  std::uint8_t g;
-  std::uint8_t b;
-  std::uint8_t a;
-};
-
-rgba8_t heat_lut(float x)
+void print_matrix(int *v1, int width, int height)
 {
-  assert(0 <= x && x <= 1);
-  float x0 = 1.f / 4.f;
-  float x1 = 2.f / 4.f;
-  float x2 = 3.f / 4.f;
-
-  if (x < x0)
+  std::cout << "---------------------" << std::endl;
+  for (int i = 0; i < width; ++i)
   {
-    auto g = static_cast<std::uint8_t>(x / x0 * 255);
-    return rgba8_t{0, g, 255, 255};
-  }
-  else if (x < x1)
-  {
-    auto b = static_cast<std::uint8_t>((x1 - x) / x0 * 255);
-    return rgba8_t{0, 255, b, 255};
-  }
-  else if (x < x2)
-  {
-    auto r = static_cast<std::uint8_t>((x - x1) / x0 * 255);
-    return rgba8_t{r, 255, 0, 255};
-  }
-  else
-  {
-    auto b = static_cast<std::uint8_t>((1.f - x) / x0 * 255);
-    return rgba8_t{255, b, 0, 255};
+    for (int j = 0; j < height; ++j)
+    {
+      std::cout << v1[i * width + j] << " | ";
+    }
+    std::cout << std::endl;
   }
 }
 
 // Device code
-__global__ void mykernel(char* buffer, int width, int height, size_t pitch)
+__global__ void mykernel(char *buffer, int width, int height, size_t pitch)
 {
-  float denum = width * width + height * height;
+  int row = threadIdx.x + blockIdx.x * blockDim.x;
+  int col = threadIdx.y + blockIdx.y * blockDim.y;
 
-  int x = blockDim.x * blockIdx.x + threadIdx.x;
-  int y = blockDim.y * blockIdx.y + threadIdx.y;
-
-  if (x >= width || y >= height)
-    return;
-
-  uchar4*  lineptr = (uchar4*)(buffer + y * pitch);
-  float    v       = (x * x + y * y) / denum;
-  uint8_t  grayv   = v * 255;
-
-
-  lineptr[x] = {grayv, grayv, grayv, 255};
+  if (row < width && col < height)
+  {
+    *(((int *)(((char *)buffer) + (row * pitch))) + col) = 9;
+  }
 }
 
-void render(char* hostBuffer, int width, int height, std::ptrdiff_t stride, int n_iterations)
+std::unique_ptr<unsigned char[]> render_harris_gpu(char *hostBuffer, int width, int height, std::ptrdiff_t stride, int n_iterations)
 {
-  cudaError_t rc = cudaSuccess;
+    // H has storage for 4 integers
+    thrust::host_vector<int> H(4);
+    
+    // H.size() returns the size of vector H
+    std::cout << "H has size " << H.size() << std::endl;
 
-  // Allocate device memory
-  char*  devBuffer;
-  size_t pitch;
+  auto res = Matrix(width, height);
+  return res.to_buffer();
 
-  rc = cudaMallocPitch(&devBuffer, &pitch, width * sizeof(rgba8_t), height);
-  if (rc)
-    abortError("Fail buffer allocation");
+  // int width = 4;
+  // int height = 4;
 
-  // Run the kernel with blocks of size 64 x 64
-  {
-    int bsize = 32;
-    int w     = std::ceil((float)width / bsize);
-    int h     = std::ceil((float)height / bsize);
+  // cudaError_t rc = cudaSuccess;
 
-    spdlog::debug("running kernel of size ({},{})", w, h);
+  // // Allocate device memory
+  // char *devBuffer;
+  // size_t pitch;
 
-    dim3 dimBlock(bsize, bsize);
-    dim3 dimGrid(w, h);
-    mykernel<<<dimGrid, dimBlock>>>(devBuffer, width, height, pitch);
+  // rc = cudaMallocPitch(&devBuffer, &pitch, width * sizeof(int), height);
+  // if (rc)
+  //   abortError("Fail buffer allocation");
 
-    if (cudaPeekAtLastError())
-      abortError("Computation Error");
-  }
+  // // Run the kernel with blocks of size 64 x 64
+  // {
+  //   int bsize = 1;
+  //   int w = std::ceil((float)width / bsize);
+  //   int h = std::ceil((float)height / bsize);
 
-  // Copy back to main memory
-  rc = cudaMemcpy2D(hostBuffer, stride, devBuffer, pitch, width * sizeof(rgba8_t), height, cudaMemcpyDeviceToHost);
-  if (rc)
-    abortError("Unable to copy buffer back to memory");
+  //   spdlog::debug("running kernel of size ({},{})", w, h);
 
-  // Free
-  rc = cudaFree(devBuffer);
-  if (rc)
-    abortError("Unable to free memory");
+  //   dim3 dimBlock(bsize, bsize);
+  //   dim3 dimGrid(w, h);
+  //   mykernel<<<dimGrid, dimBlock>>>(devBuffer, width, height, pitch);
+
+  //   if (cudaPeekAtLastError())
+  //     abortError("Computation Error");
+  // }
+
+  // // Copy back to main memory
+  // rc = cudaMemcpy2D(hostBuffer, stride, devBuffer, pitch, width * sizeof(int), height, cudaMemcpyDeviceToHost);
+  // if (rc)
+  //   abortError("Unable to copy buffer back to memory");
+
+  // // Free
+  // rc = cudaFree(devBuffer);
+  // if (rc)
+  //   abortError("Unable to free memory");
+
+  // print_matrix(hostBuffer, width, height);
+  // printf("\nPitch size: %ld \n", pitch);
+}
+
+void render(char *hostBuffer, int width, int height, std::ptrdiff_t stride, int n_iterations)
+{
+  std::cout << "HELLO Harris GPU" << std::endl;
 }
