@@ -4,6 +4,10 @@
 #include <cassert>
 #include <iostream>
 #include <thrust/host_vector.h>
+#include <thrust/device_vector.h>
+#include <thrust/copy.h>
+#include <thrust/execution_policy.h>
+#include <cstdio>
 
 [[gnu::noinline]] void _abortError(const char *msg, const char *fname, int line)
 {
@@ -15,86 +19,74 @@
 
 #define abortError(msg) _abortError(msg, __FUNCTION__, __LINE__)
 
-void print_matrix(int *v1, int width, int height)
+__global__ void grayscale_kernel(unsigned char *input_buffer, int width, int height, double *output_buffer)
 {
-  std::cout << "---------------------" << std::endl;
-  for (int i = 0; i < width; ++i)
-  {
-    for (int j = 0; j < height; ++j)
-    {
-      std::cout << v1[i * width + j] << " | ";
-    }
-    std::cout << std::endl;
-  }
+  int i = threadIdx.y + blockIdx.y * blockDim.y;
+  int j = threadIdx.x + blockIdx.x * blockDim.x;
+
+  auto index = i * width + j;
+  double r = input_buffer[index * 4 + 0];
+  double g = input_buffer[index * 4 + 1];
+  double b = input_buffer[index * 4 + 2];
+
+  output_buffer[index] = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.;
 }
 
-// Device code
-__global__ void mykernel(char *buffer, int width, int height, size_t pitch)
+std::unique_ptr<unsigned char[]> to_buffer(const thrust::host_vector<double> &output_buffer_host, const int &width, const int &height)
 {
-  int row = threadIdx.x + blockIdx.x * blockDim.x;
-  int col = threadIdx.y + blockIdx.y * blockDim.y;
+  auto res = std::make_unique<unsigned char[]>(width * height * 4);
 
-  if (row < width && col < height)
+  for (int i = 0; i < height; i++)
   {
-    *(((int *)(((char *)buffer) + (row * pitch))) + col) = 9;
+    for (int j = 0; j < width; j++)
+    {
+      int index = i * width + j;
+      double value = std::min(std::max(0., output_buffer_host[index]), 1.);
+
+      res.get()[index * 4 + 0] = static_cast<unsigned char>(value * 255.);
+      res.get()[index * 4 + 1] = static_cast<unsigned char>(value * 255.);
+      res.get()[index * 4 + 2] = static_cast<unsigned char>(value * 255.);
+      res.get()[index * 4 + 3] = static_cast<unsigned char>(255.);
+    }
   }
+
+  return res;
+}
+
+void grayscale_gpu(thrust::device_vector<unsigned char> &input_buffer_device, thrust::device_vector<double> &output_buffer_device, int input_width, int input_height)
+{
+  unsigned char *input_buffer_raw = thrust::raw_pointer_cast(input_buffer_device.data());
+  double *output_buffer_raw = thrust::raw_pointer_cast(output_buffer_device.data());
+
+  int bsize = 32;
+  int w = std::ceil((double)input_width / bsize);
+  int h = std::ceil((double)input_height / bsize);
+
+  spdlog::info("running kernel of size ({},{})", h, w);
+
+  dim3 dimBlock(bsize, bsize);
+  dim3 dimGrid(w, h);
+
+  grayscale_kernel<<<dimGrid, dimBlock>>>(input_buffer_raw, input_width, input_height, output_buffer_raw);
+  cudaDeviceSynchronize();
+
+  if (cudaPeekAtLastError())
+    abortError("Computation Error");
 }
 
 std::unique_ptr<unsigned char[]> render_harris_gpu(unsigned char *input_buffer, int input_width, int input_height, std::ptrdiff_t stride, int n_iterations)
 {
-  auto res = MatrixCu(input_height, input_width);
+  thrust::host_vector<unsigned char> input_buffer_host(input_buffer, input_buffer + (input_height * input_width * 4));
+  thrust::device_vector<unsigned char> input_buffer_device = input_buffer_host;
+  thrust::device_vector<double> output_buffer_device(input_height * input_width * 4);
 
-  res.print_size();
+  grayscale_gpu(input_buffer_device, output_buffer_device, input_width, input_height);
 
-  thrust::fill(res.data.begin(), res.data.end(), 0);
-
-  // res.print();
-
-  return res.to_buffer();
+  thrust::host_vector<double> output_buffer_host = output_buffer_device;
+  return to_buffer(output_buffer_host, input_width, input_height);
 }
 
 void render(char *hostBuffer, int width, int height, std::ptrdiff_t stride, int n_iterations)
 {
   std::cout << "HELLO Harris GPU" << std::endl;
-
-  width = 4;
-  height = 4;
-
-  cudaError_t rc = cudaSuccess;
-
-  // Allocate device memory
-  char *devBuffer;
-  size_t pitch;
-
-  rc = cudaMallocPitch(&devBuffer, &pitch, width * sizeof(int), height);
-  if (rc)
-    abortError("Fail buffer allocation");
-
-  // Run the kernel with blocks of size 64 x 64
-  {
-    int bsize = 1;
-    int w = std::ceil((float)width / bsize);
-    int h = std::ceil((float)height / bsize);
-
-    spdlog::debug("running kernel of size ({},{})", w, h);
-
-    dim3 dimBlock(bsize, bsize);
-    dim3 dimGrid(w, h);
-    mykernel<<<dimGrid, dimBlock>>>(devBuffer, width, height, pitch);
-
-    if (cudaPeekAtLastError())
-      abortError("Computation Error");
-  }
-
-  // Copy back to main memory
-  rc = cudaMemcpy2D(hostBuffer, stride, devBuffer, pitch, width * sizeof(int), height, cudaMemcpyDeviceToHost);
-  if (rc)
-    abortError("Unable to copy buffer back to memory");
-
-  // Free
-  rc = cudaFree(devBuffer);
-  if (rc)
-    abortError("Unable to free memory");
-
-  printf("\nPitch size: %ld \n", pitch);
 }
