@@ -88,11 +88,11 @@ Matrix compute_gradient(const Matrix &kernel, const int &size, const int &axis)
     return res;
 }
 
-Matrix convolution_2D(const Matrix &image, Matrix &kernel, const int &size)
+Matrix convolution_2D(const Matrix &image, Matrix &kernel, const int &size, const int padding)
 {
     int kernel_size = 2 * size + 1;
-    int new_height = image.height - kernel_size + 1;
-    int new_width = image.width - kernel_size + 1;
+    int new_height = image.height + 2*padding - kernel_size + 1;
+    int new_width = image.width + 2*padding - kernel_size + 1;
 
     auto res = Matrix(new_height, new_width);
 
@@ -116,7 +116,7 @@ Matrix convolution_2D(const Matrix &image, Matrix &kernel, const int &size)
 Matrix gauss_derivative(const Matrix &image, const int &size, const int &axis)
 {
     auto gradient = compute_gradient(gauss_kernel(size), size, axis);
-    return convolution_2D(image, gradient, size);
+    return convolution_2D(image, gradient, size, 3);
 }
 
 Matrix compute_harris_response(const Matrix &image)
@@ -125,12 +125,12 @@ Matrix compute_harris_response(const Matrix &image)
 
     auto img_x = gauss_derivative(image, size, 1);
     auto img_y = gauss_derivative(image, size, 0);
-
+    
     auto gauss = gauss_kernel(size);
 
-    auto W_xx = convolution_2D(img_x * img_x, gauss, size);
-    auto W_xy = convolution_2D(img_x * img_y, gauss, size);
-    auto W_yy = convolution_2D(img_y * img_y, gauss, size);
+    auto W_xx = convolution_2D(img_x * img_x, gauss, size, 3);
+    auto W_xy = convolution_2D(img_x * img_y, gauss, size, 3);
+    auto W_yy = convolution_2D(img_y * img_y, gauss, size, 3);
 
     auto W_det = (W_xx * W_yy) - (W_xy * W_xy);
     auto W_trace = W_xx + W_yy;

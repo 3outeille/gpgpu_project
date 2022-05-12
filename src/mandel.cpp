@@ -165,6 +165,6 @@ int main(int argc, char **argv)
   }
 
   // Save
-  write_png(reinterpret_cast<std::byte *>(output_buffer.get()), input_width - 12, input_height - 12, (input_width - 12) * 4, output_filename.c_str());
+  write_png(reinterpret_cast<std::byte *>(output_buffer.get()), input_width, input_height, input_width * 4, output_filename.c_str());
   spdlog::info("Output saved in {}.", output_filename);
 }
