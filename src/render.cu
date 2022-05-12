@@ -1,10 +1,9 @@
 #include "render.hpp"
-#include "matrix.hpp"
+#include "matrix.cuh"
 #include <spdlog/spdlog.h>
 #include <cassert>
 #include <iostream>
 #include <thrust/host_vector.h>
-#include <thrust/device_vector.h>
 
 [[gnu::noinline]] void _abortError(const char *msg, const char *fname, int line)
 {
@@ -43,13 +42,13 @@ __global__ void mykernel(char *buffer, int width, int height, size_t pitch)
 
 std::unique_ptr<unsigned char[]> render_harris_gpu(char *hostBuffer, int width, int height, std::ptrdiff_t stride, int n_iterations)
 {
-    // H has storage for 4 integers
-    thrust::host_vector<int> H(4);
-    
-    // H.size() returns the size of vector H
-    std::cout << "H has size " << H.size() << std::endl;
+  auto res = MatrixCu(2, 2);
+  std::cout << res.data.size() << std::endl;
 
-  auto res = Matrix(width, height);
+  thrust::fill(res.data.begin(), res.data.end(), 42);
+
+  res.print();
+
   return res.to_buffer();
 
   // int width = 4;

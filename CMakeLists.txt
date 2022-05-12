@@ -50,7 +50,7 @@ target_compile_features(renderer PUBLIC cxx_std_14)
 target_link_libraries(renderer spdlog::spdlog)
 
 
-target_sources(renderer PRIVATE src/render.hpp src/render_cpu.cpp src/matrix.hpp src/matrix.cpp src/render.cu)
+target_sources(renderer PRIVATE src/render.hpp src/render_cpu.cpp src/matrix.hpp src/matrix.cpp src/render.cu src/matrix.cu src/matrix.cuh)
 set_target_properties(renderer PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 add_executable(harris src/harris.cpp)
