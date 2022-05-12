@@ -139,3 +139,18 @@ std::unique_ptr<unsigned char[]> Matrix::to_buffer()
 
     return res;
 }
+
+Matrix Matrix::operator>(const double &rhs)
+{
+    auto res = Matrix(height, width);
+
+    for (int i = 0; i < height; i++)
+    {
+        for (int j = 0; j < width; j++)
+        {
+            res.data[i * width + j] = this->data[i * width + j] > rhs;
+        }
+    }
+
+    return res;
+}

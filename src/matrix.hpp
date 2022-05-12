@@ -18,6 +18,7 @@ class Matrix {
         Matrix operator+(const double& rhs);
         Matrix operator-(const Matrix& rhs);
         Matrix operator/(const Matrix& rhs);
+        Matrix operator>(const double& rhs);
 
         std::unique_ptr<unsigned char[]> to_buffer();
         

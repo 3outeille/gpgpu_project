@@ -144,6 +144,66 @@ Matrix compute_harris_response(const Matrix &image)
     return W_det / (W_trace + 1.);
 }
 
+Matrix morph_circle_kernel(const int kernel_size)
+{
+    auto res = Matrix(kernel_size, kernel_size);
+
+    auto radius = static_cast<double>(kernel_size) / 2;
+
+    for (int i = 0; i < kernel_size; i++)
+    {
+        for (int j = 0; j < kernel_size; j++)
+        {
+            auto y = static_cast<double>(i) + 0.5;
+            auto x = static_cast<double>(j) + 0.5;
+            auto distance = sqrt(pow(x - radius, 2) + pow(y - radius, 2));
+            res.data[i * kernel_size + j] = distance < radius;
+        }
+    }
+
+    return res;
+}
+
+Matrix morph_apply_kernel(const Matrix &image, const Matrix &kernel, int mode)
+{
+    // mode => erode: 0, dilate: 1
+
+    auto kernel_size = kernel.width;
+    auto half_kernel = kernel_size / 2;
+
+    auto res = Matrix(image.height, image.width);
+
+    for (int i = 0; i < image.height; i++)
+    {
+        for (int j = 0; j < image.width; j++)
+        {
+            double value = mode == 0 ? 1.0 : 0.0;
+            for (int k_i = 0; k_i < kernel_size; k_i++)
+            {
+                for (int k_j = 0; k_j < kernel_size; k_j++)
+                {
+                    if (kernel.data[k_i * kernel_size + k_j] == 0.)
+                        continue;
+
+                    auto img_i = i + k_i - half_kernel;
+                    auto img_j = j + k_j - half_kernel;
+                    double img_value = 0;
+
+                    if (!(img_i < 0 || img_i >= image.height || img_j < 0 || img_j >= image.width))
+                    {
+                        img_value = image.data[(i + k_i - kernel_size / 2) * image.width + (j + k_j - kernel_size / 2)];
+                    }
+
+                    value = mode == 0 ? std::min(value, img_value) : std::max(value, img_value);
+                }
+            }
+            res.data[i * res.width + j] = value;
+        }
+    }
+
+    return res;
+}
+
 std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *buffer, int width, int height)
 {
     auto image = grayscale(buffer, width, height);
