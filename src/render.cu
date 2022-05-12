@@ -40,61 +40,61 @@ __global__ void mykernel(char *buffer, int width, int height, size_t pitch)
   }
 }
 
-std::unique_ptr<unsigned char[]> render_harris_gpu(char *hostBuffer, int width, int height, std::ptrdiff_t stride, int n_iterations)
+std::unique_ptr<unsigned char[]> render_harris_gpu(unsigned char *input_buffer, int input_width, int input_height, std::ptrdiff_t stride, int n_iterations)
 {
-  auto res = MatrixCu(2, 2);
-  std::cout << res.data.size() << std::endl;
+  auto res = MatrixCu(input_height, input_width);
 
-  thrust::fill(res.data.begin(), res.data.end(), 42);
+  res.print_size();
 
-  res.print();
+  thrust::fill(res.data.begin(), res.data.end(), 0);
+
+  // res.print();
 
   return res.to_buffer();
-
-  // int width = 4;
-  // int height = 4;
-
-  // cudaError_t rc = cudaSuccess;
-
-  // // Allocate device memory
-  // char *devBuffer;
-  // size_t pitch;
-
-  // rc = cudaMallocPitch(&devBuffer, &pitch, width * sizeof(int), height);
-  // if (rc)
-  //   abortError("Fail buffer allocation");
-
-  // // Run the kernel with blocks of size 64 x 64
-  // {
-  //   int bsize = 1;
-  //   int w = std::ceil((float)width / bsize);
-  //   int h = std::ceil((float)height / bsize);
-
-  //   spdlog::debug("running kernel of size ({},{})", w, h);
-
-  //   dim3 dimBlock(bsize, bsize);
-  //   dim3 dimGrid(w, h);
-  //   mykernel<<<dimGrid, dimBlock>>>(devBuffer, width, height, pitch);
-
-  //   if (cudaPeekAtLastError())
-  //     abortError("Computation Error");
-  // }
-
-  // // Copy back to main memory
-  // rc = cudaMemcpy2D(hostBuffer, stride, devBuffer, pitch, width * sizeof(int), height, cudaMemcpyDeviceToHost);
-  // if (rc)
-  //   abortError("Unable to copy buffer back to memory");
-
-  // // Free
-  // rc = cudaFree(devBuffer);
-  // if (rc)
-  //   abortError("Unable to free memory");
-
-  // print_matrix(hostBuffer, width, height);
-  // printf("\nPitch size: %ld \n", pitch);
 }
 
 void render(char *hostBuffer, int width, int height, std::ptrdiff_t stride, int n_iterations)
 {
   std::cout << "HELLO Harris GPU" << std::endl;
+
+  width = 4;
+  height = 4;
+
+  cudaError_t rc = cudaSuccess;
+
+  // Allocate device memory
+  char *devBuffer;
+  size_t pitch;
+
+  rc = cudaMallocPitch(&devBuffer, &pitch, width * sizeof(int), height);
+  if (rc)
+    abortError("Fail buffer allocation");
+
+  // Run the kernel with blocks of size 64 x 64
+  {
+    int bsize = 1;
+    int w = std::ceil((float)width / bsize);
+    int h = std::ceil((float)height / bsize);
+
+    spdlog::debug("running kernel of size ({},{})", w, h);
+
+    dim3 dimBlock(bsize, bsize);
+    dim3 dimGrid(w, h);
+    mykernel<<<dimGrid, dimBlock>>>(devBuffer, width, height, pitch);
+
+    if (cudaPeekAtLastError())
+      abortError("Computation Error");
+  }
+
+  // Copy back to main memory
+  rc = cudaMemcpy2D(hostBuffer, stride, devBuffer, pitch, width * sizeof(int), height, cudaMemcpyDeviceToHost);
+  if (rc)
+    abortError("Unable to copy buffer back to memory");
+
+  // Free
+  rc = cudaFree(devBuffer);
+  if (rc)
+    abortError("Unable to free memory");
+
+  printf("\nPitch size: %ld \n", pitch);
 }

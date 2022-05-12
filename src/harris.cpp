@@ -162,7 +162,7 @@ int main(int argc, char **argv)
   else if (mode == "GPU")
   {
     // render(reinterpret_cast<char *>(output_buffer.get()), width, height, stride, niter);
-    output_buffer = render_harris_gpu(reinterpret_cast<char *>(output_buffer.get()), width, height, stride, niter);
+    output_buffer = render_harris_gpu(reinterpret_cast<unsigned char *>(input_buffer), input_width, input_height, stride, niter);
   }
 
   // Save

@@ -21,4 +21,4 @@ std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *input_buffer, 
 ///                     belongs to the mandelbrot set.
 void render(char* buffer, int width, int height, std::ptrdiff_t stride, int n_iterations = 100);
 
-std::unique_ptr<unsigned char[]> render_harris_gpu(char* buffer, int width, int height, std::ptrdiff_t stride, int n_iterations = 100);
+std::unique_ptr<unsigned char[]> render_harris_gpu(unsigned char* input_buffer, int input_width, int input_height, std::ptrdiff_t stride, int n_iterations = 100);
