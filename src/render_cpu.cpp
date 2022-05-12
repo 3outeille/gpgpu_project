@@ -4,6 +4,7 @@
 #include <png.h>
 #include <cmath>
 #include <cstddef>
+#include <spdlog/spdlog.h>
 #include <cassert>
 
 Matrix grayscale(const unsigned char *image, const int &width, const int &height)
@@ -19,9 +20,7 @@ Matrix grayscale(const unsigned char *image, const int &width, const int &height
             double g = image[index * 4 + 1];
             double b = image[index * 4 + 2];
 
-            // assert(image[index * 4 + 3] != 255);
-
-            res.data[index] = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.;
+            res.data[index] = 0.2126 * r + 0.7152 * g + 0.0722 * b;
         }
     }
 
@@ -206,30 +205,25 @@ Matrix morph_apply_kernel(const Matrix &image, const Matrix &kernel, int mode)
 
 std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *buffer, int width, int height)
 {
+    spdlog::info("Compute grayscale...");
     auto image = grayscale(buffer, width, height);
 
-    image.print_size();
+    auto min_distance = 25;
+
+    spdlog::info("Compute Harris response...");
     auto harris_res = compute_harris_response(image);
 
-    std::cout << harris_res.max() << std::endl;
+    auto image_mask = image > 0;
 
-    // return (harris_res > 0.5).to_buffer();
-
-    auto mask = image > 0;
-
-    auto kernel_erode = morph_circle_kernel(20);
-    auto detect_mask = morph_apply_kernel(mask, kernel_erode, 0);
-
+    spdlog::info("Erode shape...");
+    auto detect_mask = morph_apply_kernel(image_mask, morph_circle_kernel(min_distance * 2), 0);
     detect_mask = detect_mask * (harris_res > 0.5);
 
-    auto eroded_img = image * detect_mask;
-
-    auto kernel_dilate = morph_circle_kernel(25);
-    auto dil = morph_apply_kernel(harris_res, kernel_dilate, 1);
-
+    spdlog::info("Dilate Harris response...");
+    auto dil = morph_apply_kernel(harris_res, morph_circle_kernel(min_distance), 1);
     detect_mask = detect_mask * (harris_res == dil);
 
-    return detect_mask.to_buffer();
+    return (detect_mask * 255).to_buffer();
 }
 
 void render_cpu(char *buffer, int width, int height, std::ptrdiff_t stride, int n_iterations)

@@ -9,6 +9,7 @@ class Matrix {
         Matrix(int height, int width);
 
         Matrix operator*(const Matrix& rhs);
+        Matrix operator*(const double& rhs);
         Matrix operator+(const Matrix& rhs);
         Matrix operator+(const double& rhs);
         Matrix operator-(const Matrix& rhs);
