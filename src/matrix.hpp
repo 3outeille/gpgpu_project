@@ -1,17 +1,12 @@
 #pragma once
 #include <memory>
 #include <cstddef>
+#include <vector>
 
 class Matrix {
     public:
         Matrix();
         Matrix(int height, int width);
-        ~Matrix();
-
-        Matrix(const Matrix&) = delete;
-        Matrix& operator=(Matrix const&) = delete;
-        Matrix(Matrix &&) = default;
-        Matrix& operator=(Matrix &&) = default;
 
         Matrix operator*(const Matrix& rhs);
         Matrix operator+(const Matrix& rhs);
@@ -19,12 +14,14 @@ class Matrix {
         Matrix operator-(const Matrix& rhs);
         Matrix operator/(const Matrix& rhs);
         Matrix operator>(const double& rhs);
+        Matrix operator==(const Matrix& rhs);
 
         std::unique_ptr<unsigned char[]> to_buffer();
+        double max();
         
         void print();
         void print_size();
         
-        double *data;
+        std::vector<double> data;
         int height, width;
 };

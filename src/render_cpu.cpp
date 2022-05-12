@@ -209,32 +209,27 @@ std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *buffer, int wi
     auto image = grayscale(buffer, width, height);
 
     image.print_size();
-    auto res_double = compute_harris_response(image);
+    auto harris_res = compute_harris_response(image);
 
-    // auto res = image.to_buffer();
+    std::cout << harris_res.max() << std::endl;
 
-    res_double.print_size();
+    // return (harris_res > 0.5).to_buffer();
 
-    return res_double.to_buffer();
+    auto mask = image > 0;
 
-    // int size = 1;
-    // auto *gx = gauss_derivative_kernels(size, 1);
-    // auto *gy = gauss_derivative_kernels(size, 0);
+    auto kernel_erode = morph_circle_kernel(20);
+    auto detect_mask = morph_apply_kernel(mask, kernel_erode, 0);
 
-    // print_matrix(gx, 2 * size + 1);
-    // print_matrix(gy, 2 * size + 1);
+    detect_mask = detect_mask * (harris_res > 0.5);
 
-    /*
-    gx =
-        [[ 0.01098559  0.         -0.01098559]
-        [ 0.988891    0.         -0.988891  ]
-        [ 0.01098559  0.         -0.01098559]]
+    auto eroded_img = image * detect_mask;
 
-    gy =
-        [[ 0.01098559  0.988891    0.01098559]
-        [ 0.          0.          0.        ]
-        [-0.01098559 -0.988891   -0.01098559]]
-    */
+    auto kernel_dilate = morph_circle_kernel(25);
+    auto dil = morph_apply_kernel(harris_res, kernel_dilate, 1);
+
+    detect_mask = detect_mask * (harris_res == dil);
+
+    return detect_mask.to_buffer();
 }
 
 void render_cpu(char *buffer, int width, int height, std::ptrdiff_t stride, int n_iterations)

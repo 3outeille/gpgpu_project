@@ -7,21 +7,10 @@
 #include <cassert>
 #include <iostream>
 
-Matrix::Matrix()
-    : height(1), width(1)
-{
-    data = (double *)calloc(height * width, sizeof(double));
-}
-
-Matrix::~Matrix()
-{
-    free(data);
-}
-
 Matrix::Matrix(int height, int width)
-    : height(height), width(width)
+    : height(height), width(width), data(width * width)
 {
-    data = (double *)calloc(height * width, sizeof(double));
+    std::fill(data.begin(), data.end(), 0);
 }
 
 Matrix Matrix::operator*(const Matrix &rhs)
@@ -152,5 +141,24 @@ Matrix Matrix::operator>(const double &rhs)
         }
     }
 
+    return res;
+}
+
+Matrix Matrix::operator==(const Matrix &rhs)
+{
+    auto res = Matrix(height, width);
+
+    for (int i = 0; i < width * height; i++)
+        res.data[i] = data[i] == rhs.data[i];
+
+    return res;
+}
+
+double Matrix::max() {
+    auto res = data[0];
+
+    for (int i = 0; i < width * height; i++)
+        res = std::max(data[i], res);
+    
     return res;
 }
