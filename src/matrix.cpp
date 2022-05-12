@@ -8,7 +8,7 @@
 #include <iostream>
 
 Matrix::Matrix(int height, int width)
-    : height(height), width(width), data(width * width)
+    : height(height), width(width), data(height * width)
 {
     std::fill(data.begin(), data.end(), 0);
 }
