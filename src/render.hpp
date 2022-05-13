@@ -8,10 +8,7 @@
 /// \param stride Number of bytes between two lines
 /// \param n_iterations Number of iterations maximal to decide if a point
 ///                     belongs to the mandelbrot set.
-extern "C"
-void render_cpu(char* buffer, int width, int height, std::ptrdiff_t stride, int n_iterations = 100);
-
-std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *input_buffer, int input_width, int input_height);
+std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *input_buffer, int input_width, int input_height, std::ptrdiff_t stride, int n_iterations = 100);
 
 /// \param buffer The RGBA24 image buffer
 /// \param width Image width
@@ -19,6 +16,4 @@ std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *input_buffer, 
 /// \param stride Number of bytes between two lines
 /// \param n_iterations Number of iterations maximal to decide if a point
 ///                     belongs to the mandelbrot set.
-void render(char* buffer, int width, int height, std::ptrdiff_t stride, int n_iterations = 100);
-
 std::unique_ptr<unsigned char[]> render_harris_gpu(unsigned char* input_buffer, int input_width, int input_height, std::ptrdiff_t stride, int n_iterations = 100);

@@ -139,10 +139,14 @@ __global__ void convolution_2D_gpu_kernel(double *output_buffer, const double *i
 
   double cell_value = 0;
 
-  for (int k_i = -size; k_i <= size && i + k_i >= 0 && i + k_i < height; ++k_i)
+  for (int k_i = -size; k_i <= size && i + k_i < height; ++k_i)
   {
-    for (int k_j = -size; k_j <= size && j + k_j >= 0 && j + k_j < width; ++k_j)
+    if (i + k_i < 0)
+      continue;
+    for (int k_j = -size; k_j <= size && j + k_j < width; ++k_j)
     {
+      if (j + k_j < 0)
+        continue;
       double image_value = input[(i + k_i) * width + (j + k_j)];
       auto kernel_value = kernel[(k_i + size) * kernel_size + (k_j + size)];
       cell_value += image_value * kernel_value;
@@ -276,28 +280,23 @@ std::unique_ptr<unsigned char[]> render_harris_gpu(unsigned char *input_buffer, 
   thrust::host_vector<unsigned char> input_host(input_buffer, input_buffer + (height * width * 4));
   thrust::device_vector<unsigned char> input_device = input_host;
 
-  spdlog::info("Compute grayscale gpu ...");
+  spdlog::debug("Compute grayscale gpu ...");
   auto img_grayscale = grayscale_gpu(input_device, width, height);
 
-  spdlog::info("Compute Harris response gpu ...");
+  spdlog::debug("Compute Harris response gpu ...");
   auto harris_res = compute_harris_response_gpu(img_grayscale);
 
   auto image_mask = img_grayscale > 0;
 
-  spdlog::info("Erode shape gpu ...");
+  spdlog::debug("Erode shape gpu ...");
   auto min_distance = 25;
   auto eroded_mask = morph_apply_gpu(image_mask, circle_filter_gpu(min_distance * 2), 0);
   auto thresholded_mask = eroded_mask * (harris_res > (0.5 * harris_res.max()));
 
-  spdlog::info("Dilate Harris response...");
+  spdlog::debug("Dilate Harris response...");
   auto dil = morph_apply_gpu(harris_res, circle_filter_gpu(min_distance), 1);
   auto detect_mask = thresholded_mask * (harris_res == dil);
 
   auto res = detect_mask * 255;
   return res.to_host_buffer();
-}
-
-void render(char *hostBuffer, int width, int height, std::ptrdiff_t stride, int n_iterations)
-{
-  std::cout << "HELLO Harris GPU" << std::endl;
 }

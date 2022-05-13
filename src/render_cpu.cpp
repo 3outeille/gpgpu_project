@@ -244,44 +244,27 @@ std::vector<std::tuple<int, int>> top_k_best_coords_keypoints(Matrix detect_mask
     return best_corners_coordinates;
 }
 
-std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *buffer, int width, int height)
+std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *buffer, int width, int height, std::ptrdiff_t stride, int n_iterations)
 {
-    spdlog::info("Compute grayscale...");
+    spdlog::debug("Compute grayscale...");
     auto image = grayscale(buffer, width, height);
 
 
-    spdlog::info("Compute Harris response...");
+    spdlog::debug("Compute Harris response...");
     auto harris_res = compute_harris_response(image);
 
     auto image_mask = image > 0;
 
-    spdlog::info("Erode shape...");
+    spdlog::debug("Erode shape...");
     auto min_distance = 25;
     auto detect_mask = morph_apply_kernel(image_mask, morph_circle_kernel(min_distance * 2), 0);
     detect_mask = detect_mask * (harris_res > (0.5 * harris_res.max()));
 
-    spdlog::info("Dilate Harris response...");
+    spdlog::debug("Dilate Harris response...");
     auto dil = morph_apply_kernel(harris_res, morph_circle_kernel(min_distance), 1);
     detect_mask = detect_mask * (harris_res == dil);
 
     // auto best_corners_coordinates = top_k_best_coords_keypoints(detect_mask, harris_res, 10);
 
     return (detect_mask * 255).to_buffer();
-}
-
-void render_cpu(char *buffer, int width, int height, std::ptrdiff_t stride, int n_iterations)
-{
-    std::cout << "Hello" << std::endl;
-
-    for (int i = 0; i < height; ++i)
-    {
-        for (int j = 0; j < width; ++j)
-        {
-            for (int k = 0; k < 4; k++)
-            {
-                buffer[i * stride + j * 4 + k] = 255;
-            }
-        }
-    }
-    return;
 }

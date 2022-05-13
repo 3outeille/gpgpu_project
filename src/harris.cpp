@@ -148,7 +148,6 @@ int main(int argc, char **argv)
   // Create buffer
   constexpr int kRGBASize = 4;
   int stride = width * kRGBASize;
-  // auto output_buffer = std::make_unique<std::byte[]>(height * stride);
 
   std::unique_ptr<unsigned char[]> output_buffer;
 
@@ -156,12 +155,10 @@ int main(int argc, char **argv)
   spdlog::info("Runnging {} mode with (w={},h={},niter={}).", mode, width, height, niter);
   if (mode == "CPU")
   {
-    // render_cpu(reinterpret_cast<char *>(output_buffer.get()), width, height, stride, niter);
-    output_buffer = render_harris_cpu(reinterpret_cast<unsigned char *>(input_buffer), input_width, input_height);
+    output_buffer = render_harris_cpu(reinterpret_cast<unsigned char *>(input_buffer), input_width, input_height, stride, niter);
   }
   else if (mode == "GPU")
   {
-    // render(reinterpret_cast<char *>(output_buffer.get()), width, height, stride, niter);
     output_buffer = render_harris_gpu(reinterpret_cast<unsigned char *>(input_buffer), input_width, input_height, stride, niter);
   }
 
