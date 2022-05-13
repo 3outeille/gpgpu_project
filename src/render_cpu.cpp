@@ -7,6 +7,7 @@
 #include <spdlog/spdlog.h>
 #include <cassert>
 #include <numeric>
+#include <tuple>
 #include <algorithm>
 
 Matrix grayscale(const unsigned char *image, const int &width, const int &height)
@@ -29,7 +30,7 @@ Matrix grayscale(const unsigned char *image, const int &width, const int &height
     return res;
 }
 
-Matrix gauss_kernel(const int &size)
+Matrix gauss_filter(const int &size)
 {
     int kernel_size = 2 * size + 1;
 
@@ -122,7 +123,7 @@ Matrix convolution_2D(const Matrix &image, Matrix &kernel, const int &size)
 
 Matrix gauss_derivative(const Matrix &image, const int &size, const int &axis)
 {
-    auto gradient = compute_gradient(gauss_kernel(size), size, axis);
+    auto gradient = compute_gradient(gauss_filter(size), size, axis);
     return convolution_2D(image, gradient, size);
 }
 
@@ -133,7 +134,7 @@ Matrix compute_harris_response(const Matrix &image)
     auto img_x = gauss_derivative(image, size, 1);
     auto img_y = gauss_derivative(image, size, 0);
 
-    auto gauss = gauss_kernel(size);
+    auto gauss = gauss_filter(size);
 
     auto W_xx = convolution_2D(img_x * img_x, gauss, size);
     auto W_xy = convolution_2D(img_x * img_y, gauss, size);
@@ -232,10 +233,13 @@ std::vector<std::tuple<int, int>> top_k_best_coords_keypoints(Matrix detect_mask
     std::sort(sorted_indices.begin(), sorted_indices.end(), [&candidate_values](const size_t &i, const size_t &j)
               { return candidate_values[i] > candidate_values[j]; });
 
+
     // keep only the K bests
     std::vector<std::tuple<int, int>> best_corners_coordinates;
-    for (int i = 0; i < K; ++i)
+    for (int i = 0; i < K && i < candidates_coords.size(); ++i) {
         best_corners_coordinates.push_back(candidates_coords[sorted_indices[i]]);
+        spdlog::info("[{}, {}]", std::get<0>(best_corners_coordinates[i]), std::get<1>(best_corners_coordinates[i]));
+    }
 
     return best_corners_coordinates;
 }
@@ -254,7 +258,7 @@ std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *buffer, int wi
 
     spdlog::info("Erode shape...");
     auto detect_mask = morph_apply_kernel(image_mask, morph_circle_kernel(min_distance * 2), 0);
-    detect_mask = detect_mask * (harris_res > 0.5);
+    detect_mask = detect_mask * (harris_res > (0.5 * harris_res.max()));
 
     spdlog::info("Dilate Harris response...");
     auto dil = morph_apply_kernel(harris_res, morph_circle_kernel(min_distance), 1);
