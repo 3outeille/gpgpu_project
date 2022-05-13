@@ -6,6 +6,8 @@
 #include <cstddef>
 #include <spdlog/spdlog.h>
 #include <cassert>
+#include <numeric>
+#include <algorithm>
 
 Matrix grayscale(const unsigned char *image, const int &width, const int &height)
 {
@@ -203,6 +205,41 @@ Matrix morph_apply_kernel(const Matrix &image, const Matrix &kernel, int mode)
     return res;
 }
 
+std::vector<std::tuple<int, int>> top_k_best_coords_keypoints(Matrix detect_mask, Matrix harris_res, int K = 10)
+{
+    // coordinates of candidates
+    std::vector<std::tuple<int, int>> candidates_coords;
+    for (int i = 0; i < detect_mask.height; ++i)
+    {
+        for (int j = 0; j < detect_mask.width; ++j)
+        {
+            if (detect_mask.data[i * detect_mask.width + j] != 0.)
+                candidates_coords.push_back(std::make_tuple(i, j));
+        }
+    }
+
+    // values of candidates
+    std::vector<double> candidate_values;
+    for (int i = 0; i < detect_mask.width * detect_mask.height; ++i)
+    {
+        if (detect_mask.data[i])
+            candidate_values.push_back(harris_res.data[i]);
+    }
+
+    // Sort candidates
+    std::vector<int> sorted_indices(candidate_values.size());
+    std::iota(sorted_indices.begin(), sorted_indices.end(), 0);
+    std::sort(sorted_indices.begin(), sorted_indices.end(), [&candidate_values](const size_t &i, const size_t &j)
+              { return candidate_values[i] > candidate_values[j]; });
+
+    // keep only the K bests
+    std::vector<std::tuple<int, int>> best_corners_coordinates;
+    for (int i = 0; i < K; ++i)
+        best_corners_coordinates.push_back(candidates_coords[sorted_indices[i]]);
+
+    return best_corners_coordinates;
+}
+
 std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *buffer, int width, int height)
 {
     spdlog::info("Compute grayscale...");
@@ -222,6 +259,8 @@ std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *buffer, int wi
     spdlog::info("Dilate Harris response...");
     auto dil = morph_apply_kernel(harris_res, morph_circle_kernel(min_distance), 1);
     detect_mask = detect_mask * (harris_res == dil);
+
+    auto best_corners_coordinates = top_k_best_coords_keypoints(detect_mask, harris_res, 10);
 
     return (detect_mask * 255).to_buffer();
 }
