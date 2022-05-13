@@ -249,7 +249,6 @@ std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *buffer, int wi
     spdlog::info("Compute grayscale...");
     auto image = grayscale(buffer, width, height);
 
-    auto min_distance = 25;
 
     spdlog::info("Compute Harris response...");
     auto harris_res = compute_harris_response(image);
@@ -257,6 +256,7 @@ std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *buffer, int wi
     auto image_mask = image > 0;
 
     spdlog::info("Erode shape...");
+    auto min_distance = 25;
     auto detect_mask = morph_apply_kernel(image_mask, morph_circle_kernel(min_distance * 2), 0);
     detect_mask = detect_mask * (harris_res > (0.5 * harris_res.max()));
 
@@ -264,7 +264,7 @@ std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *buffer, int wi
     auto dil = morph_apply_kernel(harris_res, morph_circle_kernel(min_distance), 1);
     detect_mask = detect_mask * (harris_res == dil);
 
-    auto best_corners_coordinates = top_k_best_coords_keypoints(detect_mask, harris_res, 10);
+    // auto best_corners_coordinates = top_k_best_coords_keypoints(detect_mask, harris_res, 10);
 
     return (detect_mask * 255).to_buffer();
 }

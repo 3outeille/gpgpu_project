@@ -33,7 +33,7 @@ __global__ void grayscale_gpu_kernel(unsigned char *input_buffer, int width, int
   double g = input_buffer[index * 4 + 1];
   double b = input_buffer[index * 4 + 2];
 
-  output_buffer[index] = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.;
+  output_buffer[index] = 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
 MatrixGPU grayscale_gpu(thrust::device_vector<unsigned char> &input, int width, int height)
@@ -184,11 +184,91 @@ MatrixGPU compute_harris_response_gpu(const MatrixGPU &image)
   auto W_xx = convolution_2D_gpu(img_x * img_x, gauss);
   auto W_xy = convolution_2D_gpu(img_x * img_y, gauss);
   auto W_yy = convolution_2D_gpu(img_y * img_y, gauss);
-  
+
   auto W_det = (W_xx * W_yy) - (W_xy * W_xy);
   auto W_trace = W_xx + W_yy;
 
   return W_det / (W_trace + 1.);
+}
+
+__global__ void circle_filter_gpu_kernel(double *output_buffer, int size)
+{
+  int i = threadIdx.y + blockIdx.y * blockDim.y;
+  int j = threadIdx.x + blockIdx.x * blockDim.x;
+
+  if (i >= size || j >= size)
+    return;
+
+  auto y = static_cast<double>(i) + 0.5;
+  auto x = static_cast<double>(j) + 0.5;
+  auto radius = static_cast<double>(size) / 2;
+  auto distance = sqrt(pow(x - radius, 2) + pow(y - radius, 2));
+  output_buffer[i * size + j] = distance < radius;
+}
+
+MatrixGPU circle_filter_gpu(int size)
+{
+  MatrixGPU output(size, size);
+
+  double *output_buffer_raw = thrust::raw_pointer_cast(output.data.data());
+
+  circle_filter_gpu_kernel<<<output.dimGrid(), output.dimBlock()>>>(output_buffer_raw, size);
+  cudaDeviceSynchronize();
+
+  if (cudaPeekAtLastError())
+    abortError("Computation Error");
+
+  return output;
+}
+
+__global__ void morph_apply_gpu_kernel(double *output_buffer, const double *input, int width, int height, const double *kernel, int kernel_size, int size, int mode)
+{
+  int i = threadIdx.y + blockIdx.y * blockDim.y;
+  int j = threadIdx.x + blockIdx.x * blockDim.x;
+
+  if (i >= height || j >= width)
+    return;
+
+  auto half_kernel = kernel_size / 2;
+
+  double value = mode == 0 ? 1.0 : 0.0;
+  for (int k_i = 0; k_i < kernel_size; k_i++)
+  {
+    for (int k_j = 0; k_j < kernel_size; k_j++)
+    {
+      if (kernel[k_i * kernel_size + k_j] == 0.)
+        continue;
+
+      auto img_i = i + k_i - half_kernel;
+      auto img_j = j + k_j - half_kernel;
+      double img_value = 0;
+
+      if (!(img_i < 0 || img_i >= height || img_j < 0 || img_j >= width))
+      {
+        img_value = input[img_i * width + img_j];
+      }
+
+      value = mode == 0 ? fmin(value, img_value) : fmax(value, img_value);
+    }
+  }
+  output_buffer[i * width + j] = value;
+}
+
+MatrixGPU morph_apply_gpu(MatrixGPU input, MatrixGPU kernel, int mode)
+{
+  // mode => erode: 0, dilate: 1
+  int size = (kernel.width - 1) / 2;
+  MatrixGPU output(input.height, input.width);
+
+  double *output_buffer_raw = thrust::raw_pointer_cast(output.data.data());
+
+  morph_apply_gpu_kernel<<<output.dimGrid(), output.dimBlock()>>>(output_buffer_raw, input.to_device_buffer(), input.width, input.height, kernel.to_device_buffer(), kernel.width, size, mode);
+  cudaDeviceSynchronize();
+
+  if (cudaPeekAtLastError())
+    abortError("Computation Error");
+
+  return output;
 }
 
 std::unique_ptr<unsigned char[]> render_harris_gpu(unsigned char *input_buffer, int width, int height, std::ptrdiff_t stride, int n_iterations)
@@ -196,11 +276,24 @@ std::unique_ptr<unsigned char[]> render_harris_gpu(unsigned char *input_buffer, 
   thrust::host_vector<unsigned char> input_host(input_buffer, input_buffer + (height * width * 4));
   thrust::device_vector<unsigned char> input_device = input_host;
 
-  auto output_grayscale = grayscale_gpu(input_device, width, height);
+  spdlog::info("Compute grayscale gpu ...");
+  auto img_grayscale = grayscale_gpu(input_device, width, height);
 
-  auto harris_res = compute_harris_response_gpu(output_grayscale);
+  spdlog::info("Compute Harris response gpu ...");
+  auto harris_res = compute_harris_response_gpu(img_grayscale);
 
-  auto res = harris_res;
+  auto image_mask = img_grayscale > 0;
+
+  spdlog::info("Erode shape gpu ...");
+  auto min_distance = 25;
+  auto eroded_mask = morph_apply_gpu(image_mask, circle_filter_gpu(min_distance * 2), 0);
+  auto thresholded_mask = eroded_mask * (harris_res > (0.5 * harris_res.max()));
+
+  spdlog::info("Dilate Harris response...");
+  auto dil = morph_apply_gpu(harris_res, circle_filter_gpu(min_distance), 1);
+  auto detect_mask = thresholded_mask * (harris_res == dil);
+
+  auto res = detect_mask * 255;
   return res.to_host_buffer();
 }
 

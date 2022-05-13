@@ -20,6 +20,7 @@ public:
     MatrixGPU operator/(const MatrixGPU &rhs);
     MatrixGPU operator>(const double &rhs);
     MatrixGPU operator==(const MatrixGPU &rhs);
+    double max();
 
     std::unique_ptr<unsigned char[]> to_host_buffer();
     double *to_device_buffer();

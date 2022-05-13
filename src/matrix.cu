@@ -65,11 +65,11 @@ std::unique_ptr<unsigned char[]> MatrixGPU::to_host_buffer()
 
     for (int i = 0; i < width * height; i++)
     {
-        double value = std::min(std::max(0., data_host[i]), 1.);
+        double value = std::min(std::max(0., data_host[i]), 255.);
 
-        res.get()[i * 4 + 0] = static_cast<unsigned char>(value * 255.);
-        res.get()[i * 4 + 1] = static_cast<unsigned char>(value * 255.);
-        res.get()[i * 4 + 2] = static_cast<unsigned char>(value * 255.);
+        res.get()[i * 4 + 0] = static_cast<unsigned char>(value);
+        res.get()[i * 4 + 1] = static_cast<unsigned char>(value);
+        res.get()[i * 4 + 2] = static_cast<unsigned char>(value);
         res.get()[i * 4 + 3] = static_cast<unsigned char>(255.);
     }
 
@@ -179,12 +179,33 @@ MatrixGPU MatrixGPU::operator/(const MatrixGPU &rhs)
 
 MatrixGPU MatrixGPU::operator>(const double &rhs)
 {
-    std::cout << "TODO: IMPLEMENT > operator" << std::endl;
-    return MatrixGPU(height, width);
+    MatrixGPU res(height, width);
+
+    thrust::transform(
+        data.begin(),
+        data.end(),
+        thrust::make_constant_iterator(rhs),
+        res.data.begin(),
+        thrust::greater<double>());
+
+    return res;
 }
 
 MatrixGPU MatrixGPU::operator==(const MatrixGPU &rhs)
 {
-    std::cout << "TODO: IMPLEMENT == operator" << std::endl;
-    return MatrixGPU(height, width);
+    MatrixGPU res(height, width);
+
+    thrust::transform(
+        data.begin(),
+        data.end(),
+        rhs.data.begin(),
+        res.data.begin(),
+        thrust::equal_to<double>());
+
+    return res;
+}
+
+double MatrixGPU::max()
+{
+    return *thrust::max_element(data.begin(), data.end());
 }
