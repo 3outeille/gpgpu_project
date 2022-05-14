@@ -23,6 +23,6 @@ class Matrix {
         void print();
         void print_size();
         
-        std::vector<double> data;
         int height, width;
+        std::vector<double> data;
 };

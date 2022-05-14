@@ -1,4 +1,4 @@
-#include "render.hpp"
+#include "../render.hpp"
 #include "matrix.hpp"
 #include <iostream>
 #include <png.h>
@@ -206,7 +206,7 @@ Matrix morph_apply_kernel(const Matrix &image, const Matrix &kernel, int mode)
     return res;
 }
 
-std::vector<std::tuple<int, int>> top_k_best_coords_keypoints(Matrix detect_mask, Matrix harris_res, int K = 10)
+std::vector<std::tuple<int, int>> top_k_best_coords_keypoints(Matrix detect_mask, Matrix harris_res, size_t K = 10)
 {
     // coordinates of candidates
     std::vector<std::tuple<int, int>> candidates_coords;
@@ -236,7 +236,7 @@ std::vector<std::tuple<int, int>> top_k_best_coords_keypoints(Matrix detect_mask
 
     // keep only the K bests
     std::vector<std::tuple<int, int>> best_corners_coordinates;
-    for (int i = 0; i < K && i < candidates_coords.size(); ++i) {
+    for (size_t i = 0; i < K && i < candidates_coords.size(); ++i) {
         best_corners_coordinates.push_back(candidates_coords[sorted_indices[i]]);
         spdlog::info("[{}, {}]", std::get<0>(best_corners_coordinates[i]), std::get<1>(best_corners_coordinates[i]));
     }
@@ -244,7 +244,7 @@ std::vector<std::tuple<int, int>> top_k_best_coords_keypoints(Matrix detect_mask
     return best_corners_coordinates;
 }
 
-std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *buffer, int width, int height, std::ptrdiff_t stride, int n_iterations)
+std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *buffer, int width, int height, std::ptrdiff_t, int)
 {
     spdlog::debug("Compute grayscale...");
     auto image = grayscale(buffer, width, height);
