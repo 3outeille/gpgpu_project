@@ -71,12 +71,12 @@ float *MatrixGPU::to_device_buffer()
     return thrust::raw_pointer_cast(data.data());
 }
 
-dim3 MatrixGPU::dimBlock()
+dim3 MatrixGPU::dimBlock() const
 {
     return dim3(bsize, bsize);
 }
 
-dim3 MatrixGPU::dimGrid()
+dim3 MatrixGPU::dimGrid() const
 {
     int w = std::ceil((float)width / bsize);
     int h = std::ceil((float)height / bsize);

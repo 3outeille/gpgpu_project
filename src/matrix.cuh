@@ -23,8 +23,8 @@ public:
     std::unique_ptr<unsigned char[]> to_host_buffer();
     float *to_device_buffer();
 
-    dim3 dimBlock();
-    dim3 dimGrid();
+    dim3 dimBlock() const;
+    dim3 dimGrid() const;
 
     void display();
     void print_size();
