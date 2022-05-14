@@ -19,7 +19,7 @@
 
 #define abortError(msg) _abortError(msg, __FUNCTION__, __LINE__)
 
-__global__ void grayscale_gpu_kernel(unsigned char *input_buffer, int width, int height, double *output_buffer)
+__global__ void grayscale_gpu_kernel(unsigned char *input_buffer, int width, int height, float *output_buffer)
 {
   int i = threadIdx.y + blockIdx.y * blockDim.y;
   int j = threadIdx.x + blockIdx.x * blockDim.x;
@@ -29,9 +29,9 @@ __global__ void grayscale_gpu_kernel(unsigned char *input_buffer, int width, int
 
   auto index = i * width + j;
 
-  double r = input_buffer[index * 4 + 0];
-  double g = input_buffer[index * 4 + 1];
-  double b = input_buffer[index * 4 + 2];
+  float r = input_buffer[index * 4 + 0];
+  float g = input_buffer[index * 4 + 1];
+  float b = input_buffer[index * 4 + 2];
 
   output_buffer[index] = 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
@@ -41,7 +41,7 @@ MatrixGPU grayscale_gpu(thrust::device_vector<unsigned char> &input, int width, 
   unsigned char *input_buffer_raw = thrust::raw_pointer_cast(input.data());
 
   MatrixGPU output(height, width);
-  double *output_buffer_raw = thrust::raw_pointer_cast(output.data.data());
+  float *output_buffer_raw = thrust::raw_pointer_cast(output.data.data());
 
   grayscale_gpu_kernel<<<output.dimGrid(), output.dimBlock()>>>(input_buffer_raw, width, height, output_buffer_raw);
   cudaDeviceSynchronize();
@@ -52,7 +52,7 @@ MatrixGPU grayscale_gpu(thrust::device_vector<unsigned char> &input, int width, 
   return output;
 }
 
-__global__ void gauss_filter_gpu_kernel(double *output_buffer, int kernel_size, int size)
+__global__ void gauss_filter_gpu_kernel(float *output_buffer, int kernel_size, int size)
 {
   int i = threadIdx.y + blockIdx.y * blockDim.y;
   int j = threadIdx.x + blockIdx.x * blockDim.x;
@@ -73,7 +73,7 @@ MatrixGPU gauss_filter_gpu(int size)
 
   MatrixGPU output(kernel_size, kernel_size);
 
-  double *output_buffer_raw = thrust::raw_pointer_cast(output.data.data());
+  float *output_buffer_raw = thrust::raw_pointer_cast(output.data.data());
 
   gauss_filter_gpu_kernel<<<output.dimGrid(), output.dimBlock()>>>(output_buffer_raw, kernel_size, size);
   cudaDeviceSynchronize();
@@ -84,7 +84,7 @@ MatrixGPU gauss_filter_gpu(int size)
   return output;
 }
 
-__global__ void compute_gradient_gpu_kernel(double *output_buffer, const double *kernel, int kernel_size, int size, int axis)
+__global__ void compute_gradient_gpu_kernel(float *output_buffer, const float *kernel, int kernel_size, int size, int axis)
 {
   int i = threadIdx.y + blockIdx.y * blockDim.y;
   int j = threadIdx.x + blockIdx.x * blockDim.x;
@@ -118,7 +118,7 @@ MatrixGPU compute_gradient_gpu(MatrixGPU input, int size, int axis)
 
   MatrixGPU output(kernel_size, kernel_size);
 
-  double *output_buffer_raw = thrust::raw_pointer_cast(output.data.data());
+  float *output_buffer_raw = thrust::raw_pointer_cast(output.data.data());
 
   compute_gradient_gpu_kernel<<<output.dimGrid(), output.dimBlock()>>>(output_buffer_raw, input.to_device_buffer(), kernel_size, size, axis);
   cudaDeviceSynchronize();
@@ -129,7 +129,7 @@ MatrixGPU compute_gradient_gpu(MatrixGPU input, int size, int axis)
   return output;
 }
 
-__global__ void convolution_2D_gpu_kernel(double *output_buffer, const double *input, int width, int height, const double *kernel, int kernel_size, int size)
+__global__ void convolution_2D_gpu_kernel(float *output_buffer, const float *input, int width, int height, const float *kernel, int kernel_size, int size)
 {
   int i = threadIdx.y + blockIdx.y * blockDim.y;
   int j = threadIdx.x + blockIdx.x * blockDim.x;
@@ -137,7 +137,7 @@ __global__ void convolution_2D_gpu_kernel(double *output_buffer, const double *i
   if (i >= height || j >= width)
     return;
 
-  double cell_value = 0;
+  float cell_value = 0;
 
   for (int k_i = -size; k_i <= size && i + k_i < height; ++k_i)
   {
@@ -147,7 +147,7 @@ __global__ void convolution_2D_gpu_kernel(double *output_buffer, const double *i
     {
       if (j + k_j < 0)
         continue;
-      double image_value = input[(i + k_i) * width + (j + k_j)];
+      float image_value = input[(i + k_i) * width + (j + k_j)];
       auto kernel_value = kernel[(k_i + size) * kernel_size + (k_j + size)];
       cell_value += image_value * kernel_value;
     }
@@ -160,7 +160,7 @@ MatrixGPU convolution_2D_gpu(MatrixGPU input, MatrixGPU kernel)
   int size = (kernel.width - 1) / 2;
   MatrixGPU output(input.height, input.width);
 
-  double *output_buffer_raw = thrust::raw_pointer_cast(output.data.data());
+  float *output_buffer_raw = thrust::raw_pointer_cast(output.data.data());
 
   convolution_2D_gpu_kernel<<<output.dimGrid(), output.dimBlock()>>>(output_buffer_raw, input.to_device_buffer(), input.width, input.height, kernel.to_device_buffer(), kernel.width, size);
   cudaDeviceSynchronize();
@@ -195,7 +195,7 @@ MatrixGPU compute_harris_response_gpu(const MatrixGPU &image)
   return W_det / (W_trace + 1.);
 }
 
-__global__ void circle_filter_gpu_kernel(double *output_buffer, int size)
+__global__ void circle_filter_gpu_kernel(char *output_buffer, int size)
 {
   int i = threadIdx.y + blockIdx.y * blockDim.y;
   int j = threadIdx.x + blockIdx.x * blockDim.x;
@@ -203,29 +203,33 @@ __global__ void circle_filter_gpu_kernel(double *output_buffer, int size)
   if (i >= size || j >= size)
     return;
 
-  auto y = static_cast<double>(i) + 0.5;
-  auto x = static_cast<double>(j) + 0.5;
-  auto radius = static_cast<double>(size) / 2;
+  auto y = static_cast<float>(i) + 0.5;
+  auto x = static_cast<float>(j) + 0.5;
+  auto radius = static_cast<float>(size) / 2;
   auto distance = sqrt(pow(x - radius, 2) + pow(y - radius, 2));
   output_buffer[i * size + j] = distance < radius;
 }
 
-MatrixGPU circle_filter_gpu(int size)
+std::tuple<thrust::device_vector<char>, int> circle_filter_gpu(int size)
 {
-  MatrixGPU output(size, size);
+  thrust::device_vector<char> output(size * size);
 
-  double *output_buffer_raw = thrust::raw_pointer_cast(output.data.data());
+  char *output_buffer_raw = reinterpret_cast<char *>(thrust::raw_pointer_cast(output.data()));
 
-  circle_filter_gpu_kernel<<<output.dimGrid(), output.dimBlock()>>>(output_buffer_raw, size);
+  auto dimGrid = dim3(32, 32);
+  int w = std::ceil((float)size / 32);
+  auto dimBlock = dim3(w, w);
+
+  circle_filter_gpu_kernel<<<dimGrid, dimBlock>>>(output_buffer_raw, size);
   cudaDeviceSynchronize();
 
   if (cudaPeekAtLastError())
     abortError("Computation Error");
 
-  return output;
+  return {output, size};
 }
 
-__global__ void morph_apply_gpu_kernel(double *output_buffer, const double *input, int width, int height, const double *kernel, int kernel_size, int size, int mode)
+__global__ void morph_apply_gpu_kernel(float *output_buffer, const float *input, int width, int height, const char *kernel, int kernel_size, int mode)
 {
   int i = threadIdx.y + blockIdx.y * blockDim.y;
   int j = threadIdx.x + blockIdx.x * blockDim.x;
@@ -233,40 +237,40 @@ __global__ void morph_apply_gpu_kernel(double *output_buffer, const double *inpu
   if (i >= height || j >= width)
     return;
 
-  auto half_kernel = kernel_size / 2;
+  auto kernel_center = kernel_size / 2 - 1;
 
-  double value = mode == 0 ? 1.0 : 0.0;
+  float value = mode == 0 ? 1.0 : 0.0;
   for (int k_i = 0; k_i < kernel_size; k_i++)
   {
+    auto img_i = i + k_i - kernel_center;
     for (int k_j = 0; k_j < kernel_size; k_j++)
     {
+      auto img_j = j + k_j - kernel_center;
+
       if (kernel[k_i * kernel_size + k_j] == 0.)
         continue;
 
-      auto img_i = i + k_i - half_kernel;
-      auto img_j = j + k_j - half_kernel;
-      double img_value = 0;
-
-      if (!(img_i < 0 || img_i >= height || img_j < 0 || img_j >= width))
-      {
+      float img_value = 0;
+      if (img_i >= 0 && img_i < height && img_j >= 0 && img_j < width)
         img_value = input[img_i * width + img_j];
-      }
 
-      value = mode == 0 ? fmin(value, img_value) : fmax(value, img_value);
+      if (mode == 0)
+        value = fmin(value, img_value);
+      else
+        value = fmax(value, img_value);
     }
   }
   output_buffer[i * width + j] = value;
 }
 
-MatrixGPU morph_apply_gpu(MatrixGPU input, MatrixGPU kernel, int mode)
+MatrixGPU morph_apply_gpu(MatrixGPU input, const std::tuple<thrust::device_vector<char>, int> &kernel, int mode)
 {
   // mode => erode: 0, dilate: 1
-  int size = (kernel.width - 1) / 2;
   MatrixGPU output(input.height, input.width);
 
-  double *output_buffer_raw = thrust::raw_pointer_cast(output.data.data());
+  auto kernel_buffer = thrust::raw_pointer_cast(std::get<0>(kernel).data());
 
-  morph_apply_gpu_kernel<<<output.dimGrid(), output.dimBlock()>>>(output_buffer_raw, input.to_device_buffer(), input.width, input.height, kernel.to_device_buffer(), kernel.width, size, mode);
+  morph_apply_gpu_kernel<<<output.dimGrid(), output.dimBlock()>>>(output.to_device_buffer(), input.to_device_buffer(), input.width, input.height, kernel_buffer, std::get<1>(kernel), mode);
   cudaDeviceSynchronize();
 
   if (cudaPeekAtLastError())

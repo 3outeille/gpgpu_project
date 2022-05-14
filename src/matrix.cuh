@@ -7,23 +7,21 @@
 class MatrixGPU
 {
 public:
-    MatrixGPU(double *buffer, int height, int width);
+    MatrixGPU(float *buffer, int height, int width);
     MatrixGPU(int height, int width);
-    MatrixGPU(thrust::device_vector<double> vec, int height, int width);
-    MatrixGPU(thrust::host_vector<double> vec, int height, int width);
 
     MatrixGPU operator*(const MatrixGPU &rhs);
-    MatrixGPU operator*(const double &rhs);
+    MatrixGPU operator*(const float &rhs);
     MatrixGPU operator+(const MatrixGPU &rhs);
-    MatrixGPU operator+(const double &rhs);
+    MatrixGPU operator+(const float &rhs);
     MatrixGPU operator-(const MatrixGPU &rhs);
     MatrixGPU operator/(const MatrixGPU &rhs);
-    MatrixGPU operator>(const double &rhs);
+    MatrixGPU operator>(const float &rhs);
     MatrixGPU operator==(const MatrixGPU &rhs);
-    double max();
+    float max();
 
     std::unique_ptr<unsigned char[]> to_host_buffer();
-    double *to_device_buffer();
+    float *to_device_buffer();
 
     dim3 dimBlock();
     dim3 dimGrid();
@@ -31,7 +29,7 @@ public:
     void display();
     void print_size();
 
-    thrust::device_vector<double> data;
+    thrust::device_vector<float> data;
     int height, width;
     const int bsize = 32;
 };

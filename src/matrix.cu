@@ -9,10 +9,10 @@
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 
-MatrixGPU::MatrixGPU(double *buffer, int height, int width)
+MatrixGPU::MatrixGPU(float *buffer, int height, int width)
     : height(height), width(width)
 {
-    thrust::host_vector<double> data_host(height * width * 4);
+    thrust::host_vector<float> data_host(height * width);
 
     for (int i = 0; i < width * height; ++i)
         data_host[i] = buffer[i];
@@ -21,17 +21,7 @@ MatrixGPU::MatrixGPU(double *buffer, int height, int width)
 }
 
 MatrixGPU::MatrixGPU(int height, int width)
-    : height(height), width(width), data(height * width * 4)
-{
-}
-
-MatrixGPU::MatrixGPU(thrust::device_vector<double> vec, int height, int width)
-    : height(height), width(width), data(vec)
-{
-}
-
-MatrixGPU::MatrixGPU(thrust::host_vector<double> vec, int height, int width)
-    : height(height), width(width), data(vec)
+    : height(height), width(width), data(height * width)
 {
 }
 
@@ -42,7 +32,7 @@ void MatrixGPU::print_size()
 
 void MatrixGPU::display()
 {
-    thrust::host_vector<double> data_host = data;
+    thrust::host_vector<float> data_host = data;
 
     for (int i = 0; i < height; ++i)
     {
@@ -59,13 +49,13 @@ void MatrixGPU::display()
 
 std::unique_ptr<unsigned char[]> MatrixGPU::to_host_buffer()
 {
-    thrust::host_vector<double> data_host = data;
+    thrust::host_vector<float> data_host = data;
 
     auto res = std::make_unique<unsigned char[]>(width * height * 4);
 
     for (int i = 0; i < width * height; i++)
     {
-        double value = std::min(std::max(0., data_host[i]), 255.);
+        float value = std::fmin(std::fmax(0., data_host[i]), 255.);
 
         res.get()[i * 4 + 0] = static_cast<unsigned char>(value);
         res.get()[i * 4 + 1] = static_cast<unsigned char>(value);
@@ -76,7 +66,7 @@ std::unique_ptr<unsigned char[]> MatrixGPU::to_host_buffer()
     return res;
 }
 
-double *MatrixGPU::to_device_buffer()
+float *MatrixGPU::to_device_buffer()
 {
     return thrust::raw_pointer_cast(data.data());
 }
@@ -88,8 +78,8 @@ dim3 MatrixGPU::dimBlock()
 
 dim3 MatrixGPU::dimGrid()
 {
-    int w = std::ceil((double)width / bsize);
-    int h = std::ceil((double)height / bsize);
+    int w = std::ceil((float)width / bsize);
+    int h = std::ceil((float)height / bsize);
     return dim3(w, h);
 }
 
@@ -102,12 +92,12 @@ MatrixGPU MatrixGPU::operator*(const MatrixGPU &rhs)
         data.end(),
         rhs.data.begin(),
         res.data.begin(),
-        thrust::multiplies<double>());
+        thrust::multiplies<float>());
 
     return res;
 }
 
-MatrixGPU MatrixGPU::operator*(const double &rhs)
+MatrixGPU MatrixGPU::operator*(const float &rhs)
 {
     MatrixGPU res(height, width);
 
@@ -116,7 +106,7 @@ MatrixGPU MatrixGPU::operator*(const double &rhs)
         data.end(),
         thrust::make_constant_iterator(rhs),
         res.data.begin(),
-        thrust::multiplies<double>());
+        thrust::multiplies<float>());
 
     return res;
 }
@@ -130,12 +120,12 @@ MatrixGPU MatrixGPU::operator+(const MatrixGPU &rhs)
         data.end(),
         rhs.data.begin(),
         res.data.begin(),
-        thrust::plus<double>());
+        thrust::plus<float>());
 
     return res;
 }
 
-MatrixGPU MatrixGPU::operator+(const double &rhs)
+MatrixGPU MatrixGPU::operator+(const float &rhs)
 {
     MatrixGPU res(height, width);
 
@@ -144,7 +134,7 @@ MatrixGPU MatrixGPU::operator+(const double &rhs)
         data.end(),
         thrust::make_constant_iterator(rhs),
         res.data.begin(),
-        thrust::plus<double>());
+        thrust::plus<float>());
 
     return res;
 }
@@ -158,7 +148,7 @@ MatrixGPU MatrixGPU::operator-(const MatrixGPU &rhs)
         data.end(),
         rhs.data.begin(),
         res.data.begin(),
-        thrust::minus<double>());
+        thrust::minus<float>());
 
     return res;
 }
@@ -172,12 +162,12 @@ MatrixGPU MatrixGPU::operator/(const MatrixGPU &rhs)
         data.end(),
         rhs.data.begin(),
         res.data.begin(),
-        thrust::divides<double>());
+        thrust::divides<float>());
 
     return res;
 }
 
-MatrixGPU MatrixGPU::operator>(const double &rhs)
+MatrixGPU MatrixGPU::operator>(const float &rhs)
 {
     MatrixGPU res(height, width);
 
@@ -186,7 +176,7 @@ MatrixGPU MatrixGPU::operator>(const double &rhs)
         data.end(),
         thrust::make_constant_iterator(rhs),
         res.data.begin(),
-        thrust::greater<double>());
+        thrust::greater<float>());
 
     return res;
 }
@@ -200,12 +190,12 @@ MatrixGPU MatrixGPU::operator==(const MatrixGPU &rhs)
         data.end(),
         rhs.data.begin(),
         res.data.begin(),
-        thrust::equal_to<double>());
+        thrust::equal_to<float>());
 
     return res;
 }
 
-double MatrixGPU::max()
+float MatrixGPU::max()
 {
     return *thrust::max_element(data.begin(), data.end());
 }
