@@ -28,13 +28,15 @@ __global__ void convolution_2D_gpu_kernel(float *output_buffer, const float *inp
 }
 
 const int BLOCK_SIZE = 32;
-
 __global__ void convolution_2D_tiled_gpu_kernel(float *output_buffer, const float *input, int width, int height, size_t pitch, const float *kernel, int kernel_size, int size)
 {
+	extern __shared__ float kernel_cached[];
 	__shared__ float padded_tile[BLOCK_SIZE][BLOCK_SIZE];
 
-	int tile_size = BLOCK_SIZE - kernel_size + 1;
+	if (threadIdx.y < kernel_size && threadIdx.x < kernel_size)
+		kernel_cached[threadIdx.y * kernel_size + threadIdx.x] = kernel[threadIdx.y * kernel_size + threadIdx.x];
 
+	int tile_size = BLOCK_SIZE - kernel_size + 1;
 	int input_i = threadIdx.y + blockIdx.y * tile_size;
 	int input_j = threadIdx.x + blockIdx.x * tile_size;
 
@@ -56,7 +58,7 @@ __global__ void convolution_2D_tiled_gpu_kernel(float *output_buffer, const floa
 
 	for (int k_i = 0; k_i < kernel_size; ++k_i)
 		for (int k_j = 0; k_j < kernel_size; ++k_j)
-			cell_value += padded_tile[threadIdx.y + k_i][threadIdx.x + k_j] * kernel[k_i * kernel_size + k_j];
+			cell_value += padded_tile[threadIdx.y + k_i][threadIdx.x + k_j] * kernel_cached[k_i * kernel_size + k_j];
 
 	output_buffer[input_i * width + input_j] = cell_value;
 }
@@ -70,7 +72,6 @@ MatrixGPU convolution_2D_gpu(MatrixGPU &input, MatrixGPU &kernel)
 	cudaMallocPitch(&input_pitched, &pitch, input.width * sizeof(float), input.height);
 	cudaMemcpy2D(input_pitched, pitch, input.to_device_buffer(), input.width * sizeof(float), input.width * sizeof(float), input.height, cudaMemcpyDeviceToDevice);
 
-
 	MatrixGPU output(input.height, input.width);
 
 	// convolution_2D_gpu_kernel<<<output.dimGrid(), output.dimBlock()>>>(output.to_device_buffer(), input_pitched, input.width, input.height, pitch, kernel.to_device_buffer(), kernel.width, size);
@@ -80,7 +81,7 @@ MatrixGPU convolution_2D_gpu(MatrixGPU &input, MatrixGPU &kernel)
 	auto dim_grid_width = std::ceil((float)input.width / tile_size);
 	auto dim_grid_height = std::ceil((float)input.height / tile_size);
 	auto dim_grid = dim3(dim_grid_width, dim_grid_height);
-	convolution_2D_tiled_gpu_kernel<<<dim_grid, dim_block>>>(output.to_device_buffer(), input_pitched, input.width, input.height, pitch, kernel.to_device_buffer(), kernel.width, size);
+	convolution_2D_tiled_gpu_kernel<<<dim_grid, dim_block, kernel.width * kernel.width>>>(output.to_device_buffer(), input_pitched, input.width, input.height, pitch, kernel.to_device_buffer(), kernel.width, size);
 
 	cudaDeviceSynchronize();
 
