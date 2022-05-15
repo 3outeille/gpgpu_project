@@ -264,7 +264,7 @@ std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *buffer, int wi
     auto dil = morph_apply_kernel(harris_res, morph_circle_kernel(min_distance), 1);
     detect_mask = detect_mask * (harris_res == dil);
 
-    // auto best_corners_coordinates = top_k_best_coords_keypoints(detect_mask, harris_res, 10);
+    auto best_corners_coordinates = top_k_best_coords_keypoints(detect_mask, harris_res, 10);
 
     return (detect_mask * 255).to_buffer();
 }
