@@ -51,7 +51,7 @@ target_link_libraries(renderer spdlog::spdlog)
 
 
 target_sources(renderer PRIVATE 
-  src/render.hpp 
+  src/render.hpp
   src/cpu/render_cpu.cpp 
   src/cpu/matrix.cpp 
   src/gpu/render.cu 
@@ -63,10 +63,10 @@ target_sources(renderer PRIVATE
   )
 set_target_properties(renderer PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
-add_executable(harris src/harris.cpp)
+add_executable(harris src/harris.cpp src/utils.cpp)
 target_compile_features(harris PUBLIC cxx_std_17)
 target_link_libraries(harris PRIVATE Thrust::Thrust PNG::PNG CLI11::CLI11 spdlog::spdlog renderer)
 
-add_executable(bench src/bench.cpp)
+add_executable(bench src/bench.cpp src/utils.cpp)
 target_compile_features(bench PUBLIC cxx_std_17)
-target_link_libraries(bench PRIVATE Thrust::Thrust spdlog::spdlog benchmark renderer)
+target_link_libraries(bench PRIVATE Thrust::Thrust PNG::PNG spdlog::spdlog benchmark renderer)

@@ -1,4 +1,3 @@
-#include "../render.hpp"
 #include "matrix.hpp"
 #include <iostream>
 #include <png.h>
@@ -238,7 +237,7 @@ std::vector<std::tuple<int, int>> top_k_best_coords_keypoints(Matrix detect_mask
     std::vector<std::tuple<int, int>> best_corners_coordinates;
     for (size_t i = 0; i < K && i < candidates_coords.size(); ++i) {
         best_corners_coordinates.push_back(candidates_coords[sorted_indices[i]]);
-        spdlog::info("[{}, {}]", std::get<0>(best_corners_coordinates[i]), std::get<1>(best_corners_coordinates[i]));
+        spdlog::debug("[{}, {}]", std::get<0>(best_corners_coordinates[i]), std::get<1>(best_corners_coordinates[i]));
     }
 
     return best_corners_coordinates;

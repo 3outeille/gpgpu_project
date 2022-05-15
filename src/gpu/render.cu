@@ -1,4 +1,3 @@
-#include "../render.hpp"
 #include "matrix.cuh"
 #include <spdlog/spdlog.h>
 #include <cassert>
@@ -10,6 +9,7 @@
 #include <cstdio>
 #include "kernels/helpers.cuh"
 #include "kernels.cuh"
+#include <fstream>
 
 MatrixGPU compute_harris_response_gpu(MatrixGPU &image)
 {
@@ -26,57 +26,12 @@ MatrixGPU compute_harris_response_gpu(MatrixGPU &image)
     auto W_xx = convolution_2D_gpu(I_xx, gauss);
     auto W_xy = convolution_2D_gpu(I_xy, gauss);
     auto W_yy = convolution_2D_gpu(I_yy, gauss);
-
+    
     auto W_det = (W_xx * W_yy) - (W_xy * W_xy);
     auto W_trace = W_xx + W_yy;
 
     return W_det / (W_trace + 1.);
 }
-
-// __global__ void get_candidates_values_gpu_kernel(float *output_values, float *harris_res, float *detect_mask, int width, int height, int *output_counter)
-// {
-//     int i = threadIdx.y + blockIdx.y * blockDim.y;
-//     int j = threadIdx.x + blockIdx.x * blockDim.x;
-
-//     if (i >= height || j >= width)
-//         return;
-
-//     if (detect_mask[i * width + j]) {
-//         output_values[i * width + j] = harris_res[i * width + j];
-//         output_counter[i * width + j] += 1;
-//     }
-
-// }
-
-// float *get_candidates_values_gpu(MatrixGPU detect_mask, MatrixGPU harris_res)
-// {
-//     thrust::device_vector<int> output_counter(detect_mask.width * detect_mask.height);
-//     thrust::fill(thrust::device, output_counter.begin(), output_counter.end(), 0);
-
-//     auto output_counter_raw = thrust::raw_pointer_cast(output_counter.data());
-
-//     thrust::device_vector<float> output_values(detect_mask.width * detect_mask.height);
-//     auto output_values_raw = thrust::raw_pointer_cast(output_values.data());
-
-//     get_candidates_values_gpu_kernel<<<detect_mask.dimGrid(), detect_mask.dimBlock()>>>(
-//         output_values_raw,
-//         harris_res.to_device_buffer(),
-//         detect_mask.to_device_buffer(),
-//         detect_mask.width,
-//         detect_mask.height,
-//         output_counter_raw
-//     );
-
-//     cudaDeviceSynchronize();
-
-//     if (cudaPeekAtLastError())
-//         abortError("Computation Error");
-
-//     // std::cout << counter << std::endl;
-//     // std::cout << output_counter[0] << std::endl;
-//     // return std::vector<float>(output_values_raw, output_values_raw + length);
-//     return output_values_raw;
-// }
 
 struct my_sort_functor
 {
@@ -113,7 +68,6 @@ std::vector<std::tuple<int, int>> top_k_best_coords_keypoints_gpu(MatrixGPU dete
         int i = host_index[k] / values.width;
         int j = host_index[k] % values.width;
         res.push_back(std::make_tuple(i, j));
-        spdlog::info("[{}, {}]", std::get<0>(res[k]), std::get<1>(res[k]));
     }
 
     return res;
@@ -141,8 +95,18 @@ std::unique_ptr<unsigned char[]> render_harris_gpu(unsigned char *input_buffer, 
     auto dil = morph_apply_gpu(harris_res, circle_filter_gpu(min_distance), 1);
     auto detect_mask = thresholded_mask * (harris_res == dil);
 
-    auto best_corners_coordinates = top_k_best_coords_keypoints_gpu(detect_mask, harris_res, 10);
+    auto best_corners_coordinates = top_k_best_coords_keypoints_gpu(detect_mask, harris_res, 2000);
+
+    std::ofstream myfile;
+    myfile.open ("best-keypoints.csv");
+    for (int k = 0; k < best_corners_coordinates.size(); ++k) {
+        myfile << std::get<0>(best_corners_coordinates[k]) << "," << std::get<1>(best_corners_coordinates[k]) << "\n";
+        spdlog::debug("[{}, {}]", std::get<0>(best_corners_coordinates[k]), std::get<1>(best_corners_coordinates[k]));
+    }
+
+    myfile.close();
 
     auto res = detect_mask * 255;
+
     return res.to_host_buffer();
 }

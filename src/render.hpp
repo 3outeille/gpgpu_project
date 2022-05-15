@@ -1,4 +1,5 @@
 #pragma once
+
 #include <cstddef>
 #include <memory>
 
@@ -16,4 +17,7 @@ std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *input_buffer, 
 /// \param stride Number of bytes between two lines
 /// \param n_iterations Number of iterations maximal to decide if a point
 ///                     belongs to the mandelbrot set.
-std::unique_ptr<unsigned char[]> render_harris_gpu(unsigned char* input_buffer, int input_width, int input_height, std::ptrdiff_t stride, int n_iterations = 100);
+std::unique_ptr<unsigned char[]> render_harris_gpu(unsigned char *input_buffer, int input_width, int input_height, std::ptrdiff_t stride, int n_iterations = 100);
+
+std::byte *read_png(const char *file_name, int &width, int &height);
+void write_png(const std::byte *buffer, int width, int height, int stride, const char *output_filename);
