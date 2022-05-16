@@ -25,9 +25,9 @@ void BM_Rendering_gpu(benchmark::State &st)
 {
   int width;
   int height;
+  // auto input_buffer = read_png("../input/city_scape_8k.png", width, height);
   auto input_buffer = read_png("../input/b003.png", width, height);
-  // auto input_buffer = read_png("../input/b003.png", width, height);
-
+  
   int stride = width * kRGBASize;
 
   for (auto _ : st)
