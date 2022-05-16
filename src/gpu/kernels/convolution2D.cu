@@ -12,6 +12,8 @@ __global__ void convolution_2D_gpu_kernel(float *output_buffer, const float *inp
 
 	float cell_value = 0;
 
+	int size = KERNEL_SIZE / 2;
+
 	for (int k_i = -size; k_i <= size && i + k_i < height; ++k_i)
 	{
 		if (i + k_i < 0)
