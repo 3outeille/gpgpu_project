@@ -13,7 +13,7 @@ Matrix::Matrix(int height, int width)
     std::fill(data.begin(), data.end(), 0);
 }
 
-Matrix Matrix::operator*(const Matrix &rhs)
+Matrix Matrix::operator*(const Matrix &rhs) const
 {
     auto res = Matrix(height, width);
 
@@ -23,7 +23,7 @@ Matrix Matrix::operator*(const Matrix &rhs)
     return res;
 }
 
-Matrix Matrix::operator*(const double &rhs)
+Matrix Matrix::operator*(const double &rhs) const
 {
     auto res = Matrix(height, width);
 
@@ -33,7 +33,7 @@ Matrix Matrix::operator*(const double &rhs)
     return res;
 }
 
-Matrix Matrix::operator+(const Matrix &rhs)
+Matrix Matrix::operator+(const Matrix &rhs) const
 {
     auto res = Matrix(height, width);
 
@@ -43,7 +43,7 @@ Matrix Matrix::operator+(const Matrix &rhs)
     return res;
 }
 
-Matrix Matrix::operator+(const double &rhs)
+Matrix Matrix::operator+(const double &rhs) const
 {
     auto res = Matrix(height, width);
 
@@ -53,7 +53,7 @@ Matrix Matrix::operator+(const double &rhs)
     return res;
 }
 
-Matrix Matrix::operator-(const Matrix &rhs)
+Matrix Matrix::operator-(const Matrix &rhs) const
 {
     auto res = Matrix(height, width);
 
@@ -63,7 +63,7 @@ Matrix Matrix::operator-(const Matrix &rhs)
     return res;
 }
 
-Matrix Matrix::operator/(const Matrix &rhs)
+Matrix Matrix::operator/(const Matrix &rhs) const
 {
     auto res = Matrix(height, width);
 
@@ -73,7 +73,7 @@ Matrix Matrix::operator/(const Matrix &rhs)
     return res;
 }
 
-void Matrix::print()
+void Matrix::print() const
 {
     for (int i = 0; i < height; ++i)
     {
@@ -88,7 +88,7 @@ void Matrix::print()
     std::cout << std::endl;
 }
 
-void Matrix::print_size()
+void Matrix::print_size() const
 {
     std::cout << this->width << "x" << this->height << std::endl;
 }
@@ -114,7 +114,7 @@ std::unique_ptr<unsigned char[]> Matrix::to_buffer()
     return res;
 }
 
-Matrix Matrix::operator>(const double &rhs)
+Matrix Matrix::operator>(const double &rhs) const
 {
     auto res = Matrix(height, width);
 
@@ -124,7 +124,7 @@ Matrix Matrix::operator>(const double &rhs)
     return res;
 }
 
-Matrix Matrix::operator==(const Matrix &rhs)
+Matrix Matrix::operator==(const Matrix &rhs) const
 {
     auto res = Matrix(height, width);
 
@@ -134,7 +134,7 @@ Matrix Matrix::operator==(const Matrix &rhs)
     return res;
 }
 
-double Matrix::max()
+double Matrix::max() const
 {
     auto res = data[0];
 

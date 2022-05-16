@@ -25,12 +25,12 @@ MatrixGPU::MatrixGPU(int height, int width)
 {
 }
 
-void MatrixGPU::print_size()
+void MatrixGPU::print_size() const
 {
     std::cout << width << "x" << height << std::endl;
 }
 
-void MatrixGPU::display()
+void MatrixGPU::display() const
 {
     thrust::host_vector<float> data_host = data;
 
@@ -83,7 +83,7 @@ dim3 MatrixGPU::dimGrid() const
     return dim3(w, h);
 }
 
-MatrixGPU MatrixGPU::operator*(const MatrixGPU &rhs)
+MatrixGPU MatrixGPU::operator*(const MatrixGPU &rhs) const
 {
     MatrixGPU res(height, width);
 
@@ -97,7 +97,7 @@ MatrixGPU MatrixGPU::operator*(const MatrixGPU &rhs)
     return res;
 }
 
-MatrixGPU MatrixGPU::operator*(const float &rhs)
+MatrixGPU MatrixGPU::operator*(const float &rhs) const
 {
     MatrixGPU res(height, width);
 
@@ -111,7 +111,7 @@ MatrixGPU MatrixGPU::operator*(const float &rhs)
     return res;
 }
 
-MatrixGPU MatrixGPU::operator+(const MatrixGPU &rhs)
+MatrixGPU MatrixGPU::operator+(const MatrixGPU &rhs) const
 {
     MatrixGPU res(height, width);
 
@@ -125,7 +125,7 @@ MatrixGPU MatrixGPU::operator+(const MatrixGPU &rhs)
     return res;
 }
 
-MatrixGPU MatrixGPU::operator+(const float &rhs)
+MatrixGPU MatrixGPU::operator+(const float &rhs) const
 {
     MatrixGPU res(height, width);
 
@@ -139,7 +139,7 @@ MatrixGPU MatrixGPU::operator+(const float &rhs)
     return res;
 }
 
-MatrixGPU MatrixGPU::operator-(const MatrixGPU &rhs)
+MatrixGPU MatrixGPU::operator-(const MatrixGPU &rhs) const
 {
     MatrixGPU res(height, width);
 
@@ -153,7 +153,7 @@ MatrixGPU MatrixGPU::operator-(const MatrixGPU &rhs)
     return res;
 }
 
-MatrixGPU MatrixGPU::operator/(const MatrixGPU &rhs)
+MatrixGPU MatrixGPU::operator/(const MatrixGPU &rhs) const
 {
     MatrixGPU res(height, width);
 
@@ -167,7 +167,7 @@ MatrixGPU MatrixGPU::operator/(const MatrixGPU &rhs)
     return res;
 }
 
-MatrixGPU MatrixGPU::operator>(const float &rhs)
+MatrixGPU MatrixGPU::operator>(const float &rhs) const
 {
     MatrixGPU res(height, width);
 
@@ -181,7 +181,7 @@ MatrixGPU MatrixGPU::operator>(const float &rhs)
     return res;
 }
 
-MatrixGPU MatrixGPU::operator==(const MatrixGPU &rhs)
+MatrixGPU MatrixGPU::operator==(const MatrixGPU &rhs) const
 {
     MatrixGPU res(height, width);
 

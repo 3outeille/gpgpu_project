@@ -17,3 +17,6 @@ __device__ inline T *eltPtr(T *baseAddress, int col, int row, size_t pitch)
 {
   return (T *)((char *)baseAddress + row * pitch + col * sizeof(T));
 }
+
+const int KERNEL_SIZE = 7;
+const int BLOCK_SIZE = 32;

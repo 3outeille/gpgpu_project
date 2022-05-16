@@ -13,11 +13,10 @@
 
 MatrixGPU compute_harris_response_gpu(MatrixGPU &image)
 {
-    int size = 3;
-    auto img_x = sobel_filter_gpu(image, size, 1);
-    auto img_y = sobel_filter_gpu(image, size, 0);
+    auto img_x = sobel_filter_gpu(image, 1);
+    auto img_y = sobel_filter_gpu(image, 0);
 
-    auto gauss = gauss_filter_gpu(size);
+    auto gauss = gauss_filter_gpu((KERNEL_SIZE - 1) / 2);
 
     auto I_xx = img_x * img_x;
     auto I_xy = img_x * img_y;
@@ -26,7 +25,7 @@ MatrixGPU compute_harris_response_gpu(MatrixGPU &image)
     auto W_xx = convolution_2D_gpu(I_xx, gauss);
     auto W_xy = convolution_2D_gpu(I_xy, gauss);
     auto W_yy = convolution_2D_gpu(I_yy, gauss);
-    
+
     auto W_det = (W_xx * W_yy) - (W_xy * W_xy);
     auto W_trace = W_xx + W_yy;
 
@@ -56,6 +55,7 @@ std::vector<std::tuple<int, int>> top_k_best_coords_keypoints_gpu(MatrixGPU dete
 
     auto my_zip = thrust::make_zip_iterator(thrust::make_tuple(index_iterator.begin(), values.data.begin()));
 
+    // TODO: fitler zero values;
     thrust::sort(my_zip, my_zip + values.width * values.height, my_sort_functor());
 
     std::vector<std::tuple<int, int>> res;
@@ -84,12 +84,13 @@ std::unique_ptr<unsigned char[]> render_harris_gpu(unsigned char *input_buffer, 
     spdlog::debug("Compute Harris response gpu ...");
     auto harris_res = compute_harris_response_gpu(img_grayscale);
 
-    auto image_mask = img_grayscale > 0;
+    // auto image_mask = img_grayscale > 0;
 
-    spdlog::debug("Erode shape gpu ...");
+    // spdlog::debug("Erode shape gpu ...");
     auto min_distance = 25;
-    auto eroded_mask = morph_apply_gpu(image_mask, circle_filter_gpu(min_distance * 2), 0);
-    auto thresholded_mask = eroded_mask * (harris_res > (0.5 * harris_res.max()));
+    // auto eroded_mask = morph_apply_gpu(image_mask, circle_filter_gpu(min_distance * 2), 0);
+    // auto thresholded_mask = eroded_mask * (harris_res > (0.5 * harris_res.max()));
+    auto thresholded_mask = harris_res > (0.5 * harris_res.max());
 
     spdlog::debug("Dilate Harris response...");
     auto dil = morph_apply_gpu(harris_res, circle_filter_gpu(min_distance), 1);
@@ -98,8 +99,9 @@ std::unique_ptr<unsigned char[]> render_harris_gpu(unsigned char *input_buffer, 
     auto best_corners_coordinates = top_k_best_coords_keypoints_gpu(detect_mask, harris_res, 2000);
 
     std::ofstream myfile;
-    myfile.open ("best-keypoints.csv");
-    for (int k = 0; k < best_corners_coordinates.size(); ++k) {
+    myfile.open("best-keypoints.csv");
+    for (int k = 0; k < best_corners_coordinates.size(); ++k)
+    {
         myfile << std::get<0>(best_corners_coordinates[k]) << "," << std::get<1>(best_corners_coordinates[k]) << "\n";
         spdlog::debug("[{}, {}]", std::get<0>(best_corners_coordinates[k]), std::get<1>(best_corners_coordinates[k]));
     }

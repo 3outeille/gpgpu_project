@@ -8,6 +8,7 @@
 #include <numeric>
 #include <tuple>
 #include <algorithm>
+#include <fstream>
 
 Matrix grayscale(const unsigned char *image, const int &width, const int &height)
 {
@@ -232,10 +233,10 @@ std::vector<std::tuple<int, int>> top_k_best_coords_keypoints(Matrix detect_mask
     std::sort(sorted_indices.begin(), sorted_indices.end(), [&candidate_values](const size_t &i, const size_t &j)
               { return candidate_values[i] > candidate_values[j]; });
 
-
     // keep only the K bests
     std::vector<std::tuple<int, int>> best_corners_coordinates;
-    for (size_t i = 0; i < K && i < candidates_coords.size(); ++i) {
+    for (size_t i = 0; i < K && i < candidates_coords.size(); ++i)
+    {
         best_corners_coordinates.push_back(candidates_coords[sorted_indices[i]]);
         spdlog::debug("[{}, {}]", std::get<0>(best_corners_coordinates[i]), std::get<1>(best_corners_coordinates[i]));
     }
@@ -247,7 +248,6 @@ std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *buffer, int wi
 {
     spdlog::debug("Compute grayscale...");
     auto image = grayscale(buffer, width, height);
-
 
     spdlog::debug("Compute Harris response...");
     auto harris_res = compute_harris_response(image);
@@ -264,6 +264,16 @@ std::unique_ptr<unsigned char[]> render_harris_cpu(unsigned char *buffer, int wi
     detect_mask = detect_mask * (harris_res == dil);
 
     auto best_corners_coordinates = top_k_best_coords_keypoints(detect_mask, harris_res, 10);
+
+    std::ofstream myfile;
+    myfile.open("best-keypoints.csv");
+    for (int k = 0; k < best_corners_coordinates.size(); ++k)
+    {
+        myfile << std::get<0>(best_corners_coordinates[k]) << "," << std::get<1>(best_corners_coordinates[k]) << "\n";
+        spdlog::debug("[{}, {}]", std::get<0>(best_corners_coordinates[k]), std::get<1>(best_corners_coordinates[k]));
+    }
+
+    myfile.close();
 
     return (detect_mask * 255).to_buffer();
 }

@@ -78,9 +78,9 @@ MatrixGPU compute_gradient_gpu(MatrixGPU &input, int size, int axis)
   return output;
 }
 
-MatrixGPU sobel_filter_gpu(MatrixGPU &image, const int &size, const int &axis)
+MatrixGPU sobel_filter_gpu(MatrixGPU &image, const int &axis)
 {
-  auto gauss = gauss_filter_gpu(size);
-  auto gradient = compute_gradient_gpu(gauss, size, axis);
+  auto gauss = gauss_filter_gpu((KERNEL_SIZE - 1) / 2);
+  auto gradient = compute_gradient_gpu(gauss, (KERNEL_SIZE - 1) / 2, axis);
   return convolution_2D_gpu(image, gradient);
 }

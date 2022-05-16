@@ -5,7 +5,7 @@
 MatrixGPU grayscale_gpu(thrust::device_vector<unsigned char> &input, int width, int height);
 
 MatrixGPU gauss_filter_gpu(int size);
-MatrixGPU sobel_filter_gpu(MatrixGPU &image, const int &size, const int &axis);
+MatrixGPU sobel_filter_gpu(MatrixGPU &image, const int &axis);
 MatrixGPU convolution_2D_gpu(MatrixGPU &input, MatrixGPU &kernel);
 
 std::tuple<thrust::device_vector<char>, int> circle_filter_gpu(int size);

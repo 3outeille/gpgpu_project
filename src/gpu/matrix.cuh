@@ -4,20 +4,19 @@
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 
-class MatrixGPU
+struct MatrixGPU
 {
-public:
     MatrixGPU(float *buffer, int height, int width);
     MatrixGPU(int height, int width);
 
-    MatrixGPU operator*(const MatrixGPU &rhs);
-    MatrixGPU operator*(const float &rhs);
-    MatrixGPU operator+(const MatrixGPU &rhs);
-    MatrixGPU operator+(const float &rhs);
-    MatrixGPU operator-(const MatrixGPU &rhs);
-    MatrixGPU operator/(const MatrixGPU &rhs);
-    MatrixGPU operator>(const float &rhs);
-    MatrixGPU operator==(const MatrixGPU &rhs);
+    MatrixGPU operator*(const MatrixGPU &rhs) const;
+    MatrixGPU operator*(const float &rhs) const;
+    MatrixGPU operator+(const MatrixGPU &rhs) const;
+    MatrixGPU operator+(const float &rhs) const;
+    MatrixGPU operator-(const MatrixGPU &rhs) const;
+    MatrixGPU operator/(const MatrixGPU &rhs) const;
+    MatrixGPU operator>(const float &rhs) const;
+    MatrixGPU operator==(const MatrixGPU &rhs) const;
     float max();
 
     std::unique_ptr<unsigned char[]> to_host_buffer();
@@ -26,8 +25,8 @@ public:
     dim3 dimBlock() const;
     dim3 dimGrid() const;
 
-    void display();
-    void print_size();
+    void display() const;
+    void print_size() const;
 
     thrust::device_vector<float> data;
     int height, width;
