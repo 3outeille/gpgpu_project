@@ -10,3 +10,4 @@ MatrixGPU convolution_2D_gpu(MatrixGPU &input, MatrixGPU &kernel);
 
 std::tuple<thrust::device_vector<char>, int> circle_filter_gpu(int size);
 MatrixGPU morph_apply_gpu(MatrixGPU &input, const std::tuple<thrust::device_vector<char>, int> &kernel, int mode);
+MatrixGPU morph_dilate_gpu(MatrixGPU &input, int kernel_size);

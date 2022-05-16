@@ -87,13 +87,21 @@ std::unique_ptr<unsigned char[]> render_harris_gpu(unsigned char *input_buffer, 
     // auto image_mask = img_grayscale > 0;
 
     // spdlog::debug("Erode shape gpu ...");
-    auto min_distance = 25;
+    // auto min_distance = 25;
     // auto eroded_mask = morph_apply_gpu(image_mask, circle_filter_gpu(min_distance * 2), 0);
     // auto thresholded_mask = eroded_mask * (harris_res > (0.5 * harris_res.max()));
     auto thresholded_mask = harris_res > (0.5 * harris_res.max());
 
     spdlog::debug("Dilate Harris response...");
-    auto dil = morph_apply_gpu(harris_res, circle_filter_gpu(min_distance), 1);
+
+    // auto dil = morph_apply_gpu(harris_res, circle_filter_gpu(min_distance), 1);
+
+    // Apply two dilatations of size 13 instead of one of size 25
+    // auto half_circle_kernel = circle_filter_gpu(13);
+    // auto dil_1 = morph_apply_gpu(harris_res, half_circle_kernel, 1);
+    // auto dil_2 = morph_apply_gpu(dil_1, half_circle_kernel, 1);
+
+    auto dil = morph_dilate_gpu(harris_res, 25);
     auto detect_mask = thresholded_mask * (harris_res == dil);
 
     auto best_corners_coordinates = top_k_best_coords_keypoints_gpu(detect_mask, harris_res, 2000);
@@ -109,6 +117,5 @@ std::unique_ptr<unsigned char[]> render_harris_gpu(unsigned char *input_buffer, 
     myfile.close();
 
     auto res = detect_mask * 255;
-
     return res.to_host_buffer();
 }

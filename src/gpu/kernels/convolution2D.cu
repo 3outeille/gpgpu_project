@@ -118,21 +118,18 @@ MatrixGPU convolution_2D_gpu(MatrixGPU &input, MatrixGPU &kernel)
 
 	MatrixGPU output(input.height, input.width);
 
-	convolution_2D_gpu_kernel<KERNEL_SIZE><<<output.dimGrid(), output.dimBlock()>>>(output.to_device_buffer(), input_pitched, input.width, input.height, pitch, kernel.to_device_buffer());
+	// convolution_2D_gpu_kernel<KERNEL_SIZE><<<output.dimGrid(), output.dimBlock()>>>(output.to_device_buffer(), input_pitched, input.width, input.height, pitch, kernel.to_device_buffer());
+	// cudaDeviceSynchronize();
 
+	auto dim_block = dim3(BLOCK_SIZE, BLOCK_SIZE);
+	float tile_size = BLOCK_SIZE - kernel.width + 1;
+	auto dim_grid_width = std::ceil((float)input.width / tile_size);
+	auto dim_grid_height = std::ceil((float)input.height / tile_size);
+	auto dim_grid = dim3(dim_grid_width, dim_grid_height);
+	convolution_2D_tiled_gpu_kernel<KERNEL_SIZE><<<dim_grid, dim_block, kernel.width * kernel.width>>>(output.to_device_buffer(), input_pitched, input.width, input.height, pitch, kernel.to_device_buffer());
+	cudaDeviceSynchronize();
 
-	// MatrixGPU output(input.height, input.width);
-
-	// auto dim_block = dim3(BLOCK_SIZE, BLOCK_SIZE);
-	// float tile_size = BLOCK_SIZE - kernel.width + 1;
-	// auto dim_grid_width = std::ceil((float)input.width / tile_size);
-	// auto dim_grid_height = std::ceil((float)input.height / tile_size);
-	// auto dim_grid = dim3(dim_grid_width, dim_grid_height);
-	// convolution_2D_tiled_gpu_kernel<KERNEL_SIZE><<<dim_grid, dim_block, kernel.width * kernel.width>>>(output.to_device_buffer(), input_pitched, input.width, input.height, pitch, kernel.to_device_buffer());
-
-	// MatrixGPU output(input.height, input.width);
 	// convolution_2D_tiled_loop_gpu_kernel<KERNEL_SIZE><<<input.dimGrid(), input.dimBlock()>>>(output.to_device_buffer(), input_pitched, input.width, input.height, pitch, kernel.to_device_buffer());
-
 	// cudaDeviceSynchronize();
 
 	if (cudaPeekAtLastError())
